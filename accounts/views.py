@@ -190,9 +190,12 @@ class SwitchRoleView(APIView):
         role = request.data.get("role")
         user = request.user
 
+        if role not in ["VISITOR", "EXHIBITOR"]:
+            return Response({"error": "Invalid role"}, status=400)
+
         if role not in user.roles:
             return Response(
-                {"error": "Role not available for user"},
+                {"error": "Role not assigned to user"},
                 status=400
             )
 
