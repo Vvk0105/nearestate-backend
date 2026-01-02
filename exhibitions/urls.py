@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView
+from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView
 
 urlpatterns = [
     path("exhibitor/profile/", ExhibitorProfileView.as_view()),
@@ -25,5 +25,10 @@ urlpatterns = [
     path(
     "admin/exhibitor-application/<int:application_id>/",
     AdminUpdateExhibitorApplication.as_view(),
+    ),
+
+    path(
+    "exhibitor/my-applications/",
+    ExhibitorApplicationStatusView.as_view(),
     ),
 ]

@@ -211,3 +211,25 @@ class PublicExhibitionListView(APIView):
         return Response(
             ExhibitionSerializer(exhibitions, many=True).data
         )
+
+class ExhibitorApplicationStatusView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.active_role != "EXHIBITOR":
+            return Response([], status=200)
+
+        apps = ExhibitorApplication.objects.filter(user=user)
+
+        data = []
+        for app in apps:
+            data.append({
+                "exhibition_id": app.exhibition.id,
+                "status": app.status,
+                "booth_number": app.booth_number,
+            })
+
+        return Response(data)
