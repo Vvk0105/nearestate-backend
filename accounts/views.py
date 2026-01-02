@@ -10,6 +10,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import EmailOTP, User
 from .utils import generate_otp
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+
 class SendEmailOTPView(APIView):
     permission_classes = []
 
@@ -76,6 +80,57 @@ class VerifyEmailOTPView(APIView):
         user, created = User.objects.get_or_create(
             email=email,
             defaults={"username": email.split("@")[0]}
+        )
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "role": user.role,
+            "is_new_user": created
+        })
+
+
+class GoogleLoginView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        token = request.data.get("token")
+
+        if not token:
+            return Response(
+                {"error": "Token is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                token,
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID
+            )
+        except ValueError:
+            return Response(
+                {"error": "Invalid Google token"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        email = idinfo.get("email")
+
+        if not email:
+            return Response(
+                {"error": "Email not found in Google account"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                "username": email.split("@")[0],
+                "first_name": idinfo.get("given_name", ""),
+                "last_name": idinfo.get("family_name", ""),
+            }
         )
 
         refresh = RefreshToken.for_user(user)

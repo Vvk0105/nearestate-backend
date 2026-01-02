@@ -152,4 +152,4 @@ EMAIL_HOST_PASSWORD = "A4r?tqMJ1ngV"
 
 DEFAULT_FROM_EMAIL = "NearEstate <contact@nearestate.com>"
 
-GOOGLE_CLIENT_ID = "846342530574-6666280lv2lk76ibk0gne3gh9e0hctng.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = "846342530574-h044i5hdsrcjgeig3o8e0gt5ueapfbg9.apps.googleusercontent.com"
