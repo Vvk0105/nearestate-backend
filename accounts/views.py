@@ -206,3 +206,27 @@ class SwitchRoleView(APIView):
             "message": "Role switched",
             "active_role": user.active_role
         })
+
+class UpdateProfileView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        user = request.user
+        username = request.data.get("username")
+
+        if not username:
+            return Response(
+                {"error": "Username is required"},
+                status=400
+            )
+
+        user.username = username
+        user.save()
+
+        return Response({
+            "message": "Profile updated",
+            "username": user.username,
+            "email": user.email, 
+        })
+

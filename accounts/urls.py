@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import SendEmailOTPView, VerifyEmailOTPView, GoogleLoginView, SelectRoleView, CurrentUserView
+from .views import SendEmailOTPView, VerifyEmailOTPView, GoogleLoginView, SelectRoleView, CurrentUserView, UpdateProfileView, SwitchRoleView
 
 urlpatterns = [
     path("email-otp/send/", SendEmailOTPView.as_view()),
@@ -8,4 +8,7 @@ urlpatterns = [
     path("google/login/", GoogleLoginView.as_view()),
     path("select-role/", SelectRoleView.as_view()),
     path("me/", CurrentUserView.as_view()),
+    path("profile/update/", UpdateProfileView.as_view()),
+    path("switch-role/", SwitchRoleView.as_view()),
+
 ]
