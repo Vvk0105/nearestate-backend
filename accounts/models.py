@@ -5,8 +5,9 @@ import uuid
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=15, blank=True, null=True)
-    role = models.CharField(
+
+    roles = models.JSONField(default=list)  
+    active_role = models.CharField(
         max_length=20,
         choices=[
             ("ADMIN", "Admin"),
@@ -20,8 +21,6 @@ class User(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
-    def __str__(self):
-        return self.email
 
 
 class EmailOTP(models.Model):

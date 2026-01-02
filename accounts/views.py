@@ -12,6 +12,8 @@ from .utils import generate_otp
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class SendEmailOTPView(APIView):
@@ -87,7 +89,7 @@ class VerifyEmailOTPView(APIView):
         return Response({
             "access": str(refresh.access_token),
             "refresh": str(refresh),
-            "role": user.role,
+            "role": user.roles,
             "is_new_user": created
         })
 
@@ -138,6 +140,66 @@ class GoogleLoginView(APIView):
         return Response({
             "access": str(refresh.access_token),
             "refresh": str(refresh),
-            "role": user.role,
+            "role": user.roles,
             "is_new_user": created
+        })
+
+class SelectRoleView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        role = request.data.get("role")
+        user = request.user
+
+        if role not in ["VISITOR", "EXHIBITOR"]:
+            return Response({"error": "Invalid role"}, status=400)
+
+        if role not in user.roles:
+            user.roles.append(role)
+
+        user.active_role = role
+        user.save()
+
+        return Response({
+            "message": "Role activated",
+            "active_role": user.active_role,
+            "roles": user.roles
+        })
+
+
+class CurrentUserView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        u = request.user
+        return Response({
+            "id": u.id,
+            "email": u.email,
+            "roles": u.roles,
+            "active_role": u.active_role
+        })
+
+
+class SwitchRoleView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        role = request.data.get("role")
+        user = request.user
+
+        if role not in user.roles:
+            return Response(
+                {"error": "Role not available for user"},
+                status=400
+            )
+
+        user.active_role = role
+        user.save()
+
+        return Response({
+            "message": "Role switched",
+            "active_role": user.active_role
         })
