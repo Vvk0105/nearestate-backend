@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import ExhibitorProfile
+from .models import ExhibitorProfile, Exhibition
 # Register your models here.
 
 admin.site.register(ExhibitorProfile)
+admin.site.register(Exhibition)

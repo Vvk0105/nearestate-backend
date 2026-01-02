@@ -14,6 +14,50 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.contrib.auth import authenticate
+
+
+class AdminLoginView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+
+        if not email or not password:
+            return Response(
+                {"error": "Email and password required"},
+                status=400
+            )
+
+        user = authenticate(
+            request,
+            username=email,
+            password=password
+        )
+
+        if not user:
+            return Response(
+                {"error": "Invalid credentials"},
+                status=401
+            )
+
+        if "ADMIN" not in user.roles:
+            return Response(
+                {"error": "Not an admin"},
+                status=403
+            )
+
+        user.active_role = "ADMIN"
+        user.save()
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "role": "ADMIN"
+        })
 
 
 class SendEmailOTPView(APIView):
