@@ -202,3 +202,12 @@ class AdminUpdateExhibitorApplication(APIView):
 
         app.save()
         return Response({"message": "Updated"})
+
+class PublicExhibitionListView(APIView):
+    permission_classes = []
+
+    def get(self, request):
+        exhibitions = Exhibition.objects.filter(is_active=True)
+        return Response(
+            ExhibitionSerializer(exhibitions, many=True).data
+        )
