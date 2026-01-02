@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import ExhibitorProfile, Exhibition, ExhibitionImage
+from .models import ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication
 from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.permissions import IsAdminUserRole
 from .serializers import ExhibitionSerializer
@@ -110,3 +110,95 @@ class AdminDeleteExhibitionView(APIView):
     def delete(self, request, pk):
         Exhibition.objects.filter(pk=pk).delete()
         return Response({"message": "Deleted"})
+
+class ExhibitorApplyView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, exhibition_id):
+        user = request.user
+
+        if user.active_role != "EXHIBITOR":
+            return Response(
+                {"error": "Only exhibitors can apply"},
+                status=403
+            )
+
+        exhibition = Exhibition.objects.get(id=exhibition_id)
+
+        if exhibition.available_booths <= 0:
+            return Response(
+                {"error": "No booths available"},
+                status=400
+            )
+
+        if ExhibitorApplication.objects.filter(
+            user=user, exhibition=exhibition
+        ).exists():
+            return Response(
+                {"error": "Already applied"},
+                status=400
+            )
+
+        ExhibitorApplication.objects.create(
+            user=user,
+            exhibition=exhibition,
+            payment_screenshot=request.FILES["payment_screenshot"],
+            transaction_id=request.data.get("transaction_id"),
+        )
+
+        return Response({"message": "Application submitted"})
+
+class AdminListExhibitorApplications(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request, exhibition_id):
+        apps = ExhibitorApplication.objects.filter(
+            exhibition_id=exhibition_id
+        )
+        data = []
+
+        for app in apps:
+            data.append({
+                "id": app.id,
+                "company": app.user.username,
+                "email": app.user.email,
+                "status": app.status,
+                "transaction_id": app.transaction_id,
+                "booth_number": app.booth_number,
+                "payment_screenshot": app.payment_screenshot.url,
+            })
+
+        return Response(data)
+
+class AdminUpdateExhibitorApplication(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def post(self, request, application_id):
+        action = request.data.get("action")
+        booth_number = request.data.get("booth_number")
+
+        app = ExhibitorApplication.objects.get(id=application_id)
+        exhibition = app.exhibition
+
+        if action == "APPROVE":
+            if exhibition.available_booths <= 0:
+                return Response(
+                    {"error": "No booths left"},
+                    status=400
+                )
+
+            app.status = "APPROVED"
+            app.booth_number = booth_number
+
+            exhibition.available_booths -= 1
+            exhibition.save()
+
+        elif action == "REJECT":
+            app.status = "REJECTED"
+
+        app.save()
+        return Response({"message": "Updated"})

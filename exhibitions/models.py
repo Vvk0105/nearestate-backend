@@ -58,3 +58,36 @@ class ExhibitionImage(models.Model):
         Exhibition, on_delete=models.CASCADE, related_name="images"
     )
     image = models.ImageField(upload_to="exhibitions/images/")
+
+class ExhibitorApplication(models.Model):
+    STATUS_CHOICES = (
+        ("PENDING", "Pending"),
+        ("APPROVED", "Approved"),
+        ("REJECTED", "Rejected"),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    exhibition = models.ForeignKey("Exhibition", on_delete=models.CASCADE)
+
+    payment_screenshot = models.ImageField(
+        upload_to="payments/screenshots/"
+    )
+    transaction_id = models.CharField(
+        max_length=100, blank=True, null=True
+    )
+
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="PENDING"
+    )
+
+    booth_number = models.PositiveIntegerField(
+        blank=True, null=True
+    )
+
+    applied_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "exhibition")
+
+    def __str__(self):
+        return f"{self.user} - {self.exhibition}"
