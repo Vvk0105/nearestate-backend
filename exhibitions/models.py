@@ -2,6 +2,7 @@ from django.db import models
 from accounts.models import User
 from django.db import models
 from django.conf import settings
+import uuid
 
 User = settings.AUTH_USER_MODEL
 
@@ -85,6 +86,20 @@ class ExhibitorApplication(models.Model):
     )
 
     applied_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "exhibition")
+
+    def __str__(self):
+        return f"{self.user} - {self.exhibition}"
+
+class VisitorRegistration(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    exhibition = models.ForeignKey("Exhibition", on_delete=models.CASCADE)
+
+    qr_code = models.UUIDField(default=uuid.uuid4, unique=True)
+    is_checked_in = models.BooleanField(default=False)
+    registered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ("user", "exhibition")

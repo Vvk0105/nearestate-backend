@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView
+from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView
 
 urlpatterns = [
     path("exhibitor/profile/", ExhibitorProfileView.as_view()),
@@ -31,4 +31,20 @@ urlpatterns = [
     "exhibitor/my-applications/",
     ExhibitorApplicationStatusView.as_view(),
     ),
+
+    path(
+    "visitor/register/<int:exhibition_id>/",
+    VisitorRegisterView.as_view(),
+    ),
+
+    path(
+    "visitor/my-qr/",
+    VisitorQRListView.as_view(),
+    ),
+
+    path(
+    "admin/qr/scan/",
+    AdminQRScanView.as_view(),
+    ),
+
 ]

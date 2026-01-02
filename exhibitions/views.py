@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication
+from .models import ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication, VisitorRegistration
 from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.permissions import IsAdminUserRole
 from .serializers import ExhibitionSerializer
@@ -233,3 +233,89 @@ class ExhibitorApplicationStatusView(APIView):
             })
 
         return Response(data)
+
+class VisitorRegisterView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, exhibition_id):
+        user = request.user
+
+        if user.active_role != "VISITOR":
+            return Response(
+                {"error": "Only visitors can register"},
+                status=403
+            )
+
+        exhibition = Exhibition.objects.get(id=exhibition_id)
+
+        if exhibition.available_visitors <= 0:
+            return Response(
+                {"error": "Visitor capacity full"},
+                status=400
+            )
+
+        if VisitorRegistration.objects.filter(
+            user=user, exhibition=exhibition
+        ).exists():
+            return Response(
+                {"error": "Already registered"},
+                status=400
+            )
+
+        VisitorRegistration.objects.create(
+            user=user,
+            exhibition=exhibition
+        )
+
+        exhibition.available_visitors -= 1
+        exhibition.save()
+
+        return Response({"message": "Registered successfully"})
+
+class VisitorQRListView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        regs = VisitorRegistration.objects.filter(user=request.user)
+
+        data = []
+        for r in regs:
+            data.append({
+                "exhibition": r.exhibition.name,
+                "qr_code": str(r.qr_code),
+                "is_checked_in": r.is_checked_in,
+            })
+
+        return Response(data)
+
+class AdminQRScanView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def post(self, request):
+        qr = request.data.get("qr_code")
+
+        try:
+            reg = VisitorRegistration.objects.get(qr_code=qr)
+        except VisitorRegistration.DoesNotExist:
+            return Response(
+                {"error": "Invalid QR"},
+                status=400
+            )
+
+        if reg.is_checked_in:
+            return Response(
+                {"error": "Already checked in"},
+                status=400
+            )
+
+        reg.is_checked_in = True
+        reg.save()
+
+        return Response({
+            "message": "Entry allowed",
+            "visitor": reg.user.email,
+            "exhibition": reg.exhibition.name
+        })
