@@ -2,11 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication, VisitorRegistration
+from .models import ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication, VisitorRegistration, Property, PropertyImage
 from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.permissions import IsAdminUserRole
-from .serializers import ExhibitionSerializer
-
+from .serializers import ExhibitionSerializer, PropertySerializer
+from rest_framework.permissions import AllowAny
+from django.shortcuts import get_object_or_404
 
 class ExhibitorProfileView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -319,3 +320,126 @@ class AdminQRScanView(APIView):
             "visitor": reg.user.email,
             "exhibition": reg.exhibition.name
         })
+
+class ExhibitorCreatePropertyView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, exhibition_id):
+        user = request.user
+
+        if user.active_role != "EXHIBITOR":
+            return Response({"error": "Not exhibitor"}, status=403)
+
+        approved = ExhibitorApplication.objects.filter(
+            user=user,
+            exhibition_id=exhibition_id,
+            status="APPROVED"
+        ).exists()
+
+        if not approved:
+            return Response(
+                {"error": "Not approved for this exhibition"},
+                status=403
+            )
+
+        prop = Property.objects.create(
+            exhibitor=user,
+            exhibition_id=exhibition_id,
+            title=request.data["title"],
+            location=request.data["location"],
+            price_from=request.data["price_from"],
+            price_to=request.data["price_to"],
+            description=request.data.get("description", ""),
+        )
+
+        for img in request.FILES.getlist("images"):
+            PropertyImage.objects.create(property=prop, image=img)
+
+        return Response(
+            PropertySerializer(prop).data,
+            status=201
+        )
+
+class ExhibitorMyPropertiesView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        props = Property.objects.filter(exhibitor=request.user)
+        return Response(PropertySerializer(props, many=True).data)
+
+class ExhibitorDeletePropertyView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, property_id):
+        prop = Property.objects.get(id=property_id)
+
+        if prop.exhibitor != request.user:
+            return Response({"error": "Forbidden"}, status=403)
+
+        prop.delete()
+        return Response({"message": "Deleted"})
+    
+
+class PublicExhibitionPropertiesView(APIView):
+    permission_classes = []
+
+    def get(self, request, exhibition_id):
+        props = Property.objects.filter(exhibition_id=exhibition_id)
+        return Response(PropertySerializer(props, many=True).data)
+
+class PublicExhibitionDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, id):
+        exhibition = get_object_or_404(Exhibition, id=id)
+        serializer = ExhibitionSerializer(exhibition)
+        return Response(serializer.data)
+
+class PublicExhibitorsByExhibitionView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, id):
+        applications = (
+            ExhibitorApplication.objects
+            .filter(exhibition_id=id, status="APPROVED")
+            .select_related("user", "user__exhibitorprofile")
+        )
+
+        data = []
+        for app in applications:
+            profile = app.user.exhibitorprofile
+
+            data.append({
+                "id": app.user.id,
+                "company_name": profile.company_name,
+                "booth_number": app.booth_number,
+            })
+
+        return Response(data)
+
+
+class VisitorMyRegistrationsView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        regs = VisitorRegistration.objects.filter(
+            user=request.user
+        ).select_related("exhibition")
+
+        data = []
+        for r in regs:
+            data.append({
+                "event_id": r.exhibition.id,
+                "event_name": r.exhibition.name,
+                "start_date": r.exhibition.start_date,
+                "end_date": r.exhibition.end_date,
+                "qr_code": str(r.qr_code),
+                "is_checked_in": r.is_checked_in,
+            })
+
+        return Response(data)

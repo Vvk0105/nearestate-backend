@@ -106,3 +106,35 @@ class VisitorRegistration(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.exhibition}"
+
+class Property(models.Model):
+    exhibitor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+    exhibition = models.ForeignKey(
+        Exhibition,
+        on_delete=models.CASCADE
+    )
+
+    title = models.CharField(max_length=255)
+    location = models.CharField(max_length=255)
+
+    price_from = models.PositiveIntegerField()
+    price_to = models.PositiveIntegerField()
+
+    description = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+
+class PropertyImage(models.Model):
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="images"
+    )
+    image = models.ImageField(upload_to="properties/")
