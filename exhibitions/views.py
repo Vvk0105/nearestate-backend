@@ -5,32 +5,60 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication, VisitorRegistration, Property, PropertyImage
 from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.permissions import IsAdminUserRole
-from .serializers import ExhibitionSerializer, PropertySerializer
+from .serializers import ExhibitionSerializer, PropertySerializer, ExhibitorProfileSerializer
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
+from rest_framework import status
 
 class ExhibitorProfileView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        user = request.user
+
+        if user.active_role != "EXHIBITOR":
+            return Response(
+                {"error": "Not an exhibitor"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            profile = ExhibitorProfile.objects.select_related("user").get(user=user)
+        except ExhibitorProfile.DoesNotExist:
+            return Response(
+                {"error": "Profile not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ExhibitorProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def post(self, request):
         user = request.user
 
         if user.active_role != "EXHIBITOR":
-            return Response({"error": "Not an exhibitor"}, status=403)
+            return Response(
+                {"error": "Not an exhibitor"},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         if hasattr(user, "exhibitorprofile"):
-            return Response({"error": "Profile already exists"}, status=400)
+            return Response(
+                {"error": "Profile already exists"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         profile = ExhibitorProfile.objects.create(
             user=user,
-            company_name=request.data["company_name"],
-            council_area=request.data["council_area"],
-            business_type=request.data["business_type"],
-            contact_number=request.data["contact_number"],
+            company_name=request.data.get("company_name"),
+            council_area=request.data.get("council_area"),
+            business_type=request.data.get("business_type"),
+            contact_number=request.data.get("contact_number"),
         )
 
-        return Response({"message": "Profile created"})
+        serializer = ExhibitorProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class ExhibitorProfileStatusView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -228,6 +256,7 @@ class ExhibitorApplicationStatusView(APIView):
         data = []
         for app in apps:
             data.append({
+                "exhibition": app.exhibition.name,
                 "exhibition_id": app.exhibition.id,
                 "status": app.status,
                 "booth_number": app.booth_number,
@@ -383,12 +412,35 @@ class ExhibitorDeletePropertyView(APIView):
         prop.delete()
         return Response({"message": "Deleted"})
     
+class ExhibitorEditPropertyView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, property_id):
+        prop = Property.objects.get(id=property_id)
+
+        if prop.exhibitor != request.user:
+            return Response({"error": "Forbidden"}, status=403)
+
+        for field in [
+            "title",
+            "location",
+            "price_from",
+            "price_to",
+            "description"
+        ]:
+            if field in request.data:
+                setattr(prop, field, request.data[field])
+
+        prop.save()
+
+        return Response(PropertySerializer(prop).data)
 
 class PublicExhibitionPropertiesView(APIView):
     permission_classes = []
 
-    def get(self, request, exhibition_id):
-        props = Property.objects.filter(exhibition_id=exhibition_id)
+    def get(self, request, exhibitor_id):
+        props = Property.objects.filter(exhibitor_id=exhibitor_id)
         return Response(PropertySerializer(props, many=True).data)
 
 class PublicExhibitionDetailView(APIView):
