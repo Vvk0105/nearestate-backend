@@ -9,6 +9,8 @@ from .serializers import ExhibitionSerializer, PropertySerializer, ExhibitorProf
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from exhibitions.utils.tasks import send_event_email
+from accounts.models import User
 
 class ExhibitorProfileView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -98,6 +100,23 @@ class AdminCreateExhibitionView(APIView):
             ExhibitionImage.objects.create(
                 exhibition=exhibition, image=img
             )
+
+        users = User.objects.filter(is_active=True).exclude(email="")
+        emails = list(users.values_list("email", flat=True))
+
+        subject = f"New Exhibition: {exhibition.name}"
+        message = f"""
+A new real estate exhibition has been announced!
+
+Event: {exhibition.name}
+Date: {exhibition.start_date} to {exhibition.end_date}
+Location: {exhibition.city}
+
+Login to NearEstate to view details and register.
+"""
+
+        if emails:
+            send_event_email.delay(subject, message, emails)
 
         return Response(
             ExhibitionSerializer(exhibition).data,

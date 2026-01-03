@@ -156,3 +156,11 @@ EMAIL_HOST_PASSWORD = "A4r?tqMJ1ngV"
 DEFAULT_FROM_EMAIL = "NearEstate <contact@nearestate.com>"
 
 GOOGLE_CLIENT_ID = "846342530574-h044i5hdsrcjgeig3o8e0gt5ueapfbg9.apps.googleusercontent.com"
+
+INSTALLED_APPS += ["django_celery_beat"]
+
+CELERY_BROKER_URL = "redis://redis:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+
+CELERY_RESULT_BACKEND = "redis://redis:6379/0"
