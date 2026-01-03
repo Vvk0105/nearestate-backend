@@ -124,12 +124,39 @@ class AdminUpdateExhibitionView(APIView):
 
         for field in [
             "name", "description", "start_date", "end_date",
-            "venue", "city", "state", "country", "is_active"
+            "venue", "city", "state", "country", "is_active", 
+            "booth_capacity", "visitor_capacity"
         ]:
             if field in request.data:
-                setattr(exhibition, field, request.data[field])
+                value = request.data[field]
 
+                if field == "is_active":
+                    value = str(value).lower() in ("true", "1", "yes", "on")
+
+                setattr(exhibition, field, value)
+
+        if "map_image" in request.FILES:
+            exhibition.map_image = request.FILES["map_image"]
+        
         exhibition.save()
+
+        # Handle New Images
+        for img in request.FILES.getlist("images"):
+            ExhibitionImage.objects.create(exhibition=exhibition, image=img)
+
+        # Handle Removed Images (expecting comma separated IDs or list)
+        remove_ids = request.data.get("remove_image_ids")
+        if remove_ids:
+            # If standard FormData array behavior, getlist might be needed or split string
+            if isinstance(remove_ids, str):
+                ids = [int(x) for x in remove_ids.split(",") if x.isdigit()]
+            else:
+                ids = remove_ids
+            
+            ExhibitionImage.objects.filter(
+                id__in=ids, exhibition=exhibition
+            ).delete()
+
         return Response(ExhibitionSerializer(exhibition).data)
 
 class AdminDeleteExhibitionView(APIView):
