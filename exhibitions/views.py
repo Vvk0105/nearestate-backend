@@ -198,6 +198,7 @@ class AdminListExhibitorApplications(APIView):
                 "transaction_id": app.transaction_id,
                 "booth_number": app.booth_number,
                 "payment_screenshot": app.payment_screenshot.url,
+                "badge": app.badge.url if app.badge else None,
             })
 
         return Response(data)
@@ -205,6 +206,7 @@ class AdminListExhibitorApplications(APIView):
 class AdminUpdateExhibitorApplication(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAdminUserRole]
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, application_id):
         action = request.data.get("action")
@@ -222,6 +224,9 @@ class AdminUpdateExhibitorApplication(APIView):
 
             app.status = "APPROVED"
             app.booth_number = booth_number
+            
+            if "badge" in request.FILES:
+                app.badge = request.FILES["badge"]
 
             exhibition.available_booths -= 1
             exhibition.save()
@@ -260,6 +265,7 @@ class ExhibitorApplicationStatusView(APIView):
                 "exhibition_id": app.exhibition.id,
                 "status": app.status,
                 "booth_number": app.booth_number,
+                "badge": app.badge.url if app.badge else None,
             })
 
         return Response(data)

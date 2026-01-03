@@ -221,6 +221,7 @@ class CurrentUserView(APIView):
         return Response({
             "id": u.id,
             "email": u.email,
+            "username": u.username,
             "roles": u.roles,
             "active_role": u.active_role
         })

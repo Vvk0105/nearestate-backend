@@ -84,6 +84,9 @@ class ExhibitorApplication(models.Model):
     booth_number = models.PositiveIntegerField(
         blank=True, null=True
     )
+    badge = models.FileField(
+        upload_to="exhibitors/badges/", blank=True, null=True
+    )
 
     applied_at = models.DateTimeField(auto_now_add=True)
 
