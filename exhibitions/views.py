@@ -9,7 +9,7 @@ from .serializers import ExhibitionSerializer, PropertySerializer, ExhibitorProf
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from exhibitions.utils.tasks import send_event_email
+from exhibitions.utils.tasks import send_event_email, send_exhibitor_approval_email
 from accounts.models import User
 
 class ExhibitorProfileView(APIView):
@@ -276,11 +276,20 @@ class AdminUpdateExhibitorApplication(APIView):
 
             exhibition.available_booths -= 1
             exhibition.save()
+            app.save()
+
+            send_exhibitor_approval_email.delay(
+                email=app.user.email,
+                exhibitor_name=app.user.username,
+                exhibition_name=exhibition.name,
+                booth_number=booth_number,
+                badge_path=app.badge.path if app.badge else None,
+            )
 
         elif action == "REJECT":
             app.status = "REJECTED"
-
-        app.save()
+            app.save()
+            
         return Response({"message": "Updated"})
 
 class PublicExhibitionListView(APIView):
