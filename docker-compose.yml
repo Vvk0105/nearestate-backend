@@ -4,8 +4,8 @@ services:
     command: gunicorn backend.wsgi:application --bind 0.0.0.0:8000
     volumes:
       - .:/app
-      - media:/app/media
-      - static:/app/static
+      - ./static:/app/static
+      - ./media:/app/media
     env_file:
       - .env
     depends_on:
