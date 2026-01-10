@@ -329,6 +329,18 @@ class VisitorRegisterView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
+    def get(self, request, exhibition_id):
+        user = request.user
+
+        is_registered = VisitorRegistration.objects.filter(
+            user=user,
+            exhibition_id=exhibition_id
+        ).exists()
+
+        return Response({
+            "is_registered": is_registered
+        })
+
     def post(self, request, exhibition_id):
         user = request.user
 
