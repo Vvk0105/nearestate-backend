@@ -162,10 +162,26 @@ class AdminListExhibitionsView(APIView):
     permission_classes = [IsAdminUserRole]
 
     def get(self, request):
+        query = request.query_params.get('search', '')
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('limit', 10))
+
         exhibitions = Exhibition.objects.all().order_by("-created_at")
-        return Response(
-            ExhibitionSerializer(exhibitions, many=True).data
-        )
+
+        if query:
+            exhibitions = exhibitions.filter(name__icontains=query)
+
+        total = exhibitions.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        exhibitions = exhibitions[start:end]
+
+        return Response({
+            "data": ExhibitionSerializer(exhibitions, many=True).data,
+            "total": total,
+            "page": page,
+            "limit": page_size
+        })
 
 class AdminUpdateExhibitionView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -678,12 +694,30 @@ class AdminDashboardStatsView(APIView):
             "total_exhibitors": unique_exhibitors
         })
 
+from django.db.models import Q
+
 class AdminEventVisitorsView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAdminUserRole]
 
     def get(self, request, exhibition_id):
+        query = request.query_params.get('search', '')
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('limit', 10))
+
         regs = VisitorRegistration.objects.filter(exhibition_id=exhibition_id).select_related('user')
+
+        if query:
+            regs = regs.filter(
+                Q(user__username__icontains=query) |
+                Q(user__email__icontains=query)
+            )
+
+        total = regs.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        regs = regs[start:end]
+
         data = []
         for r in regs:
             data.append({
@@ -694,14 +728,40 @@ class AdminEventVisitorsView(APIView):
                 "is_checked_in": r.is_checked_in,
                 "qr_code": str(r.qr_code)
             })
-        return Response(data)
+        
+        return Response({
+            "data": data,
+            "total": total,
+            "page": page,
+            "limit": page_size
+        })
 
 class AdminEventExhibitorsView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAdminUserRole]
 
     def get(self, request, exhibition_id):
-        apps = ExhibitorApplication.objects.filter(exhibition_id=exhibition_id, status='APPROVED').select_related('user', 'user__exhibitorprofile')
+        query = request.query_params.get('search', '')
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('limit', 10))
+
+        apps = ExhibitorApplication.objects.filter(
+            exhibition_id=exhibition_id, 
+            status='APPROVED'
+        ).select_related('user', 'user__exhibitorprofile')
+
+        if query:
+            apps = apps.filter(
+                Q(user__username__icontains=query) |
+                Q(user__email__icontains=query) |
+                Q(user__exhibitorprofile__company_name__icontains=query)
+            )
+
+        total = apps.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        apps = apps[start:end]
+
         data = []
         for app in apps:
             profile = getattr(app.user, 'exhibitorprofile', None)
@@ -710,9 +770,19 @@ class AdminEventExhibitorsView(APIView):
                 "company_name": profile.company_name if profile else app.user.username,
                 "email": app.user.email,
                 "booth_number": app.booth_number,
-                "badge": app.badge.url if app.badge else None
+                "badge": app.badge.url if app.badge else None,
+                # Additional details for "Eye" icon if needed, though they can be fetched individually or here
+                "contact_number": profile.contact_number if profile else None,
+                "business_type": profile.business_type if profile else None,
+                "council_area": profile.council_area if profile else None
             })
-        return Response(data)
+            
+        return Response({
+            "data": data,
+            "total": total,
+            "page": page,
+            "limit": page_size
+        })
 
 class VisitorMyRegistrationsView(APIView):
     authentication_classes = [JWTAuthentication]
