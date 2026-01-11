@@ -3,8 +3,8 @@ services:
     build: .
     command: gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 120
     volumes:
-    - media:/app/media
-    - static:/app/static
+    - /var/www/nearestate-media:/app/media
+    - /var/www/nearestate-static:/app/static
     env_file:
       - .env
     depends_on:
@@ -17,7 +17,7 @@ services:
     build: .
     command: celery -A backend worker -l info
     volumes:
-      - media:/app/media
+    - /var/www/nearestate-media:/app/media
     env_file:
       - .env
     depends_on:
@@ -38,5 +38,4 @@ services:
 
 volumes:
   postgres_data:
-  media:
-  static:
+
