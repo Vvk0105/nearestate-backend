@@ -1,11 +1,10 @@
 services:
   web:
     build: .
-    command: gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --timeout 120
+    command: gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 120
     volumes:
-      - .:/app
-      - ./static:/app/static
-      - ./media:/app/media
+    - media:/app/media
+    - static:/app/static
     env_file:
       - .env
     depends_on:
@@ -18,7 +17,6 @@ services:
     build: .
     command: celery -A backend worker -l info
     volumes:
-      - .:/app
       - media:/app/media
     env_file:
       - .env

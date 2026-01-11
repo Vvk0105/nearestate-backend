@@ -11,6 +11,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from exhibitions.utils.tasks import send_event_email, send_exhibitor_approval_email
 from accounts.models import User
+from exhibitions.utils.image_tasks import compress_model_image
+
 
 class ExhibitorProfileView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -122,8 +124,15 @@ class AdminCreateExhibitionView(APIView):
         )
 
         for img in request.FILES.getlist("images"):
-            ExhibitionImage.objects.create(
+            image_obj = ExhibitionImage.objects.create(
                 exhibition=exhibition, image=img
+            )
+
+            compress_model_image.delay(
+                "exhibitions",
+                "ExhibitionImage",
+                image_obj.id,
+                "image",
             )
 
         users = User.objects.filter(is_active=True).exclude(email="")
@@ -181,8 +190,14 @@ class AdminUpdateExhibitionView(APIView):
 
         if "map_image" in request.FILES:
             exhibition.map_image = request.FILES["map_image"]
-        
-        exhibition.save()
+            exhibition.save()
+
+            compress_model_image.delay(
+                "exhibitions",
+                "Exhibition",
+                exhibition.id,
+                "map_image",
+            )
 
         # Handle New Images
         for img in request.FILES.getlist("images"):
@@ -241,11 +256,18 @@ class ExhibitorApplyView(APIView):
                 status=400
             )
 
-        ExhibitorApplication.objects.create(
+        app = ExhibitorApplication.objects.create(
             user=user,
             exhibition=exhibition,
             payment_screenshot=request.FILES["payment_screenshot"],
             transaction_id=request.data.get("transaction_id"),
+        )
+
+        compress_model_image.delay(
+            "exhibitions",
+            "ExhibitorApplication",
+            app.id,
+            "payment_screenshot",
         )
 
         return Response({"message": "Application submitted"})
@@ -482,8 +504,14 @@ class ExhibitorCreatePropertyView(APIView):
         )
 
         for img in request.FILES.getlist("images"):
-            PropertyImage.objects.create(property=prop, image=img)
+            image_obj = PropertyImage.objects.create(property=prop, image=img)
 
+            compress_model_image.delay(
+                "exhibitions",
+                "PropertyImage",
+                image_obj.id,
+                "image",
+            )
         return Response(
             PropertySerializer(prop).data,
             status=201
