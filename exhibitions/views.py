@@ -563,6 +563,9 @@ class VisitorMyRegistrationsView(APIView):
                 "event_name": r.exhibition.name,
                 "start_date": r.exhibition.start_date,
                 "end_date": r.exhibition.end_date,
+                "city": r.exhibition.city,
+                "venue": r.exhibition.venue,
+                "is_active": r.exhibition.is_active,
                 "qr_code": str(r.qr_code),
                 "is_checked_in": r.is_checked_in,
             })
