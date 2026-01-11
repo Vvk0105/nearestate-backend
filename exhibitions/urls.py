@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView
+from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView, AdminDashboardStatsView, AdminEventVisitorsView, AdminEventExhibitorsView
 
 urlpatterns = [
     path("exhibitor/profile/", ExhibitorProfileView.as_view()),
@@ -23,5 +23,8 @@ urlpatterns = [
     path("public/exhibition/<int:exhibitor_id>/properties/", PublicExhibitionPropertiesView.as_view()),
     path("public/exhibitions/<int:id>/", PublicExhibitionDetailView.as_view()),
     path("public/exhibitions/<int:id>/exhibitors/", PublicExhibitorsByExhibitionView.as_view()),
+    path("admin/dashboard/stats/", AdminDashboardStatsView.as_view()),
+    path("admin/exhibitions/<int:exhibition_id>/visitors/", AdminEventVisitorsView.as_view()),
+    path("admin/exhibitions/<int:exhibition_id>/exhibitors/", AdminEventExhibitorsView.as_view()),
     path("visitor/my-registrations/", VisitorMyRegistrationsView.as_view()),
 ]
