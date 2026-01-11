@@ -186,7 +186,26 @@ class AdminUpdateExhibitionView(APIView):
                 if field == "is_active":
                     value = str(value).lower() in ("true", "1", "yes", "on")
 
-                setattr(exhibition, field, value)
+                # Handle Capacity Changes - Update Availability
+                if field == "booth_capacity":
+                    try:
+                        new_cap = int(value)
+                        delta = new_cap - exhibition.booth_capacity
+                        exhibition.available_booths += delta
+                        setattr(exhibition, field, new_cap)
+                    except ValueError:
+                        pass # Ignore invalid int
+                        
+                elif field == "visitor_capacity":
+                    try:
+                        new_cap = int(value)
+                        delta = new_cap - exhibition.visitor_capacity
+                        exhibition.available_visitors += delta
+                        setattr(exhibition, field, new_cap)
+                    except ValueError:
+                        pass
+                else:
+                    setattr(exhibition, field, value)
 
         # 🔹 Remove map image
         if request.data.get("remove_map_image") == "true":
@@ -719,3 +738,13 @@ class VisitorMyRegistrationsView(APIView):
             })
 
         return Response(data)
+
+class AdminToggleVisitorCheckInView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def post(self, request, visitor_id):
+        reg = get_object_or_404(VisitorRegistration, id=visitor_id)
+        reg.is_checked_in = not reg.is_checked_in
+        reg.save()
+        return Response({"id": reg.id, "is_checked_in": reg.is_checked_in})
