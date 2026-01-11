@@ -188,9 +188,18 @@ class AdminUpdateExhibitionView(APIView):
 
                 setattr(exhibition, field, value)
 
+        # 🔹 Remove map image
+        if request.data.get("remove_map_image") == "true":
+            if exhibition.map_image:
+                exhibition.map_image.delete(save=False)
+            exhibition.map_image = None
+
+        # 🔹 Replace map image
         if "map_image" in request.FILES:
+            if exhibition.map_image:
+                exhibition.map_image.delete(save=False)
+
             exhibition.map_image = request.FILES["map_image"]
-            exhibition.save()
 
             compress_model_image.delay(
                 "exhibitions",
@@ -215,6 +224,8 @@ class AdminUpdateExhibitionView(APIView):
             ExhibitionImage.objects.filter(
                 id__in=ids, exhibition=exhibition
             ).delete()
+
+        exhibition.save()
 
         return Response(ExhibitionSerializer(exhibition).data)
 
