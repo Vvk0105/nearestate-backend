@@ -158,8 +158,8 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
-# EMAIL_BACKEND = "accounts.email_backend.UnverifiedSSLEmailBackend"
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "accounts.email_backend.UnverifiedSSLEmailBackend"
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = 465
