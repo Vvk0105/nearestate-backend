@@ -52,17 +52,36 @@ class ExhibitorProfileSerializer(serializers.ModelSerializer):
         return value.strip()
     
 class ExhibitionImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = ExhibitionImage
         fields = ["id", "image"]
+    
+    def get_image(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        elif obj.image:
+            return obj.image.url
+        return None
 
 
 class ExhibitionSerializer(serializers.ModelSerializer):
     images = ExhibitionImageSerializer(many=True, read_only=True)
+    map_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Exhibition
         fields = "__all__"
+    
+    def get_map_image(self, obj):
+        request = self.context.get('request')
+        if obj.map_image and request:
+            return request.build_absolute_uri(obj.map_image.url)
+        elif obj.map_image:
+            return obj.map_image.url
+        return None
     
     def validate_name(self, value):
         if len(value) > 200:
@@ -102,9 +121,19 @@ class ExhibitionSerializer(serializers.ModelSerializer):
         return data
 
 class PropertyImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = PropertyImage
         fields = ["id", "image"]
+    
+    def get_image(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        elif obj.image:
+            return obj.image.url
+        return None
 
 
 class PropertySerializer(serializers.ModelSerializer):

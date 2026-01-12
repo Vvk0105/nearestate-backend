@@ -153,7 +153,7 @@ Login to NearEstate to view details and register.
             send_event_email.delay(subject, message, emails)
 
         return Response(
-            ExhibitionSerializer(exhibition).data,
+            ExhibitionSerializer(exhibition, context={'request': request}).data,
             status=201
         )
 
@@ -177,7 +177,7 @@ class AdminListExhibitionsView(APIView):
         exhibitions = exhibitions[start:end]
 
         return Response({
-            "data": ExhibitionSerializer(exhibitions, many=True).data,
+            "data": ExhibitionSerializer(exhibitions, many=True, context={'request': request}).data,
             "total": total,
             "page": page,
             "limit": page_size
@@ -262,7 +262,7 @@ class AdminUpdateExhibitionView(APIView):
 
         exhibition.save()
 
-        return Response(ExhibitionSerializer(exhibition).data)
+        return Response(ExhibitionSerializer(exhibition, context={'request': request}).data)
 
 class AdminDeleteExhibitionView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -391,7 +391,7 @@ class PublicExhibitionListView(APIView):
     def get(self, request):
         exhibitions = Exhibition.objects.filter(is_active=True)
         return Response(
-            ExhibitionSerializer(exhibitions, many=True).data
+            ExhibitionSerializer(exhibitions, many=True, context={'request': request}).data
         )
 
 class ExhibitorApplicationStatusView(APIView):
@@ -559,7 +559,7 @@ class ExhibitorCreatePropertyView(APIView):
                 "image",
             )
         return Response(
-            PropertySerializer(prop).data,
+            PropertySerializer(prop, context={'request': request}).data,
             status=201
         )
 
@@ -569,7 +569,7 @@ class ExhibitorMyPropertiesView(APIView):
 
     def get(self, request):
         props = Property.objects.filter(exhibitor=request.user)
-        return Response(PropertySerializer(props, many=True).data)
+        return Response(PropertySerializer(props, many=True, context={'request': request}).data)
 
 class ExhibitorDeletePropertyView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -622,21 +622,21 @@ class ExhibitorEditPropertyView(APIView):
                 id__in=ids, property=prop
             ).delete()
 
-        return Response(PropertySerializer(prop).data)
+        return Response(PropertySerializer(prop, context={'request': request}).data)
 
 class PublicExhibitionPropertiesView(APIView):
     permission_classes = []
 
     def get(self, request, exhibitor_id):
         props = Property.objects.filter(exhibitor_id=exhibitor_id)
-        return Response(PropertySerializer(props, many=True).data)
+        return Response(PropertySerializer(props, many=True, context={'request': request}).data)
 
 class PublicExhibitionDetailView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, id):
         exhibition = get_object_or_404(Exhibition, id=id)
-        serializer = ExhibitionSerializer(exhibition)
+        serializer = ExhibitionSerializer(exhibition, context={'request': request})
         return Response(serializer.data)
 
 class PublicExhibitorsByExhibitionView(APIView):
