@@ -656,6 +656,9 @@ class PublicExhibitorsByExhibitionView(APIView):
             data.append({
                 "id": app.user.id,
                 "company_name": profile.company_name,
+                "business_type": profile.business_type,
+                "council_area": profile.council_area,
+                "contact_number": profile.contact_number,
                 "booth_number": app.booth_number,
             })
 

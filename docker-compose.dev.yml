@@ -1,0 +1,15 @@
+services:
+  web:
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - /var/www/nearestate-media:/app/media
+      - /var/www/nearestate-static:/app/static
+    ports:
+      - "8000:8000"
+
+  celery:
+    command: celery -A backend worker -l info
+    volumes:
+      - .:/app
+      - /var/www/nearestate-media:/app/media
