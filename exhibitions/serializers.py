@@ -171,6 +171,16 @@ class ExhibitorApplicationSerializer(serializers.ModelSerializer):
         model = ExhibitorApplication
         fields = "__all__"
 
+    def _build_media_url(self, request, field):
+        if not field:
+            return None
+
+        url = field.url
+        if url.startswith("http://") or url.startswith("https://"):
+            return url
+
+        return request.build_absolute_uri(url)
+    
     def get_payment_screenshot(self, obj):
         request = self.context.get("request")
         if obj.payment_screenshot:
