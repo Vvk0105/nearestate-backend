@@ -196,9 +196,13 @@ class ExhibitorApplicationSerializer(serializers.ModelSerializer):
     
     def get_payment_screenshot(self, obj):
         request = self.context.get("request")
-        return self._build_media_url(request, obj.payment_screenshot)
+        if obj.payment_screenshot:
+            return request.build_absolute_uri(obj.payment_screenshot.url)
+        return None
 
     def get_badge(self, obj):
         request = self.context.get("request")
-        return self._build_media_url(request, obj.badge)
+        if obj.badge:
+            return request.build_absolute_uri(obj.badge.url)
+        return None
 
