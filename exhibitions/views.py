@@ -5,7 +5,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication, VisitorRegistration, Property, PropertyImage
 from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.permissions import IsAdminUserRole
-from .serializers import ExhibitionSerializer, PropertySerializer, ExhibitorProfileSerializer
+from .serializers import ExhibitionSerializer, PropertySerializer, ExhibitorProfileSerializer, ExhibitorApplicationSerializer
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -323,24 +323,14 @@ class AdminListExhibitorApplications(APIView):
     permission_classes = [IsAdminUserRole]
 
     def get(self, request, exhibition_id):
-        apps = ExhibitorApplication.objects.filter(
-            exhibition_id=exhibition_id
+        apps = ExhibitorApplication.objects.filter(exhibition_id=exhibition_id)
+
+        serializer = ExhibitorApplicationSerializer(
+            apps,
+            many=True,
+            context={"request": request}
         )
-        data = []
-
-        for app in apps:
-            data.append({
-                "id": app.id,
-                "company": app.user.username,
-                "email": app.user.email,
-                "status": app.status,
-                "transaction_id": app.transaction_id,
-                "booth_number": app.booth_number,
-                "payment_screenshot": app.payment_screenshot.url,
-                "badge": app.badge.url if app.badge else None,
-            })
-
-        return Response(data)
+        return Response(serializer.data)
 
 class AdminUpdateExhibitorApplication(APIView):
     authentication_classes = [JWTAuthentication]

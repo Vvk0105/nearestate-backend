@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Exhibition, ExhibitionImage, Property, PropertyImage, ExhibitorProfile
+from .models import Exhibition, ExhibitionImage, Property, PropertyImage, ExhibitorProfile, ExhibitorApplication
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxLengthValidator
 import re
@@ -162,3 +162,23 @@ class PropertySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Price is too large")
         return value
 
+
+class ExhibitorApplicationSerializer(serializers.ModelSerializer):
+    payment_screenshot = serializers.SerializerMethodField()
+    badge = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExhibitorApplication
+        fields = "__all__"
+
+    def get_payment_screenshot(self, obj):
+        request = self.context.get("request")
+        if obj.payment_screenshot:
+            return request.build_absolute_uri(obj.payment_screenshot.url)
+        return None
+
+    def get_badge(self, obj):
+        request = self.context.get("request")
+        if obj.badge:
+            return request.build_absolute_uri(obj.badge.url)
+        return None
