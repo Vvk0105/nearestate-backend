@@ -163,7 +163,24 @@ class PropertySerializer(serializers.ModelSerializer):
         return value
 
 
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "email", "username"]
+
+class ExhibitorProfileMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExhibitorProfile
+        fields = [
+            "company_name",
+            "business_type",
+            "council_area",
+            "contact_number",
+        ]
+
 class ExhibitorApplicationSerializer(serializers.ModelSerializer):
+    user = UserMiniSerializer(read_only=True)
+    exhibitor_profile = serializers.SerializerMethodField()
     payment_screenshot = serializers.SerializerMethodField()
     badge = serializers.SerializerMethodField()
 
