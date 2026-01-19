@@ -176,9 +176,13 @@ class ExhibitorApplicationSerializer(serializers.ModelSerializer):
             return None
 
         url = field.url
+        print("RAW field.url =", url)
+
         if url.startswith("http://") or url.startswith("https://"):
+            print("RETURNING ABSOLUTE")
             return url
 
+        print("BUILDING ABSOLUTE")
         return request.build_absolute_uri(url)
     
     def get_payment_screenshot(self, obj):
