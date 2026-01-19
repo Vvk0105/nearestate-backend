@@ -188,19 +188,11 @@ class ExhibitorApplicationSerializer(serializers.ModelSerializer):
         model = ExhibitorApplication
         fields = "__all__"
 
-    def _build_media_url(self, request, field):
-        if not field:
+    def get_exhibitor_profile(self, obj):
+        profile = getattr(obj.user, "exhibitorprofile", None)
+        if not profile:
             return None
-
-        url = field.url
-        print("RAW field.url =", url)
-
-        if url.startswith("http://") or url.startswith("https://"):
-            print("RETURNING ABSOLUTE")
-            return url
-
-        print("BUILDING ABSOLUTE")
-        return request.build_absolute_uri(url)
+        return ExhibitorProfileMiniSerializer(profile).data
     
     def get_payment_screenshot(self, obj):
         request = self.context.get("request")
