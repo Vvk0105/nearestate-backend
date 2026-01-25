@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exhibitor Participation Confirmed</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background-color: #1a1a2e;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .logo {
+            max-width: 150px;
+            height: auto;
+        }
+
+        .content {
+            padding: 30px;
+            color: #333333;
+            line-height: 1.6;
+        }
+
+        .content h2 {
+            color: #1a1a2e;
+            margin-top: 0;
+        }
+
+        .approval-box {
+            background-color: #e8f5e9;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #4caf50;
+            border-radius: 4px;
+        }
+
+        .approval-box p {
+            margin: 8px 0;
+        }
+
+        .booth-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1a1a2e;
+            margin: 10px 0;
+        }
+
+        .footer {
+            background-color: #f4f4f4;
+            padding: 20px;
+            text-align: center;
+            color: #666666;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #1a1a2e;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="email-container">
+        <div class="header">
+            <img src="cid:logo" alt="NearEstate" class="logo">
+        </div>
+
+        <div class="content">
+            <h2>Exhibitor Participation Confirmed – {{ exhibition_name }}</h2>
+
+            <p>Hello {{ exhibitor_name }},</p>
+
+            <p>We're pleased to confirm that your exhibitor application for the upcoming <strong>{{ exhibition_name }}</strong> has been approved.</p>
+
+            <div class="approval-box">
+                <p><strong>Booth Number:</strong></p>
+                <p class="booth-number">{{ booth_number }}</p>
+            </div>
+
+            <p>Your exhibitor badge is attached (if applicable). Please keep it available for event entry and
+                verification.</p>
+
+            <p>We're delighted to have you join us and look forward to your participation. If you need any assistance,
+                our team is happy to help.</p>
+
+            <p>Best regards,<br>
+                <strong>NearEstate Team</strong>
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><a href="https://www.nearestate.com">www.NearEstate.com</a></p>
+            <img src="cid:logo" alt="NearEstate" style="max-width: 80px; margin-top: 10px;">
+        </div>
+    </div>
+</body>
+
+</html>

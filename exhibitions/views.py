@@ -138,19 +138,19 @@ class AdminCreateExhibitionView(APIView):
         users = User.objects.filter(is_active=True).exclude(email="")
         emails = list(users.values_list("email", flat=True))
 
-        subject = f"New Exhibition: {exhibition.name}"
-        message = f"""
-A new real estate exhibition has been announced!
-
-Event: {exhibition.name}
-Date: {exhibition.start_date} to {exhibition.end_date}
-Location: {exhibition.city}
-
-Login to NearEstate to view details and register.
-"""
+        subject = f"Invitation: {exhibition.name} | {exhibition.city}"
+        exhibition_data = {
+            'name': exhibition.name,
+            'start_date': exhibition.start_date,
+            'end_date': exhibition.end_date,
+            'venue': exhibition.venue,
+            'city': exhibition.city,
+            'state': exhibition.state,
+            'country': exhibition.country,
+        }
 
         if emails:
-            send_event_email.delay(subject, message, emails)
+            send_event_email.delay(subject, exhibition_data, emails)
 
         return Response(
             ExhibitionSerializer(exhibition, context={'request': request}).data,

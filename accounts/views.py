@@ -4,6 +4,8 @@ from rest_framework import status
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -26,8 +28,17 @@ class AdminLoginView(APIView):
 
         if not email or not password:
             return Response(
-                {"error": "Email and password required"},
-                status=400
+                {"error": "Email and password are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate email format
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response(
+                {"error": "Please enter a valid email address"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         user = authenticate(
@@ -38,14 +49,14 @@ class AdminLoginView(APIView):
 
         if not user:
             return Response(
-                {"error": "Invalid credentials"},
-                status=401
+                {"error": "Invalid email or password"},
+                status=status.HTTP_401_UNAUTHORIZED
             )
 
         if "ADMIN" not in user.roles:
             return Response(
-                {"error": "Not an admin"},
-                status=403
+                {"error": "Access denied. Admin role required"},
+                status=status.HTTP_403_FORBIDDEN
             )
 
         user.active_role = "ADMIN"
@@ -72,6 +83,15 @@ class SendEmailOTPView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Validate email format
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response(
+                {"error": "Please enter a valid email address"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         otp = generate_otp()
 
         EmailOTP.objects.update_or_create(
@@ -93,6 +113,33 @@ class SendEmailOTPView(APIView):
 
         return Response({"message": "OTP sent successfully"})
 
+
+class RefreshTokenView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+
+        if not refresh_token:
+            return Response(
+                {"error": "Refresh token is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            refresh = RefreshToken(refresh_token)
+            access_token = str(refresh.access_token)
+            
+            return Response({
+                "access": access_token,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": "Invalid or expired refresh token"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+
 class VerifyEmailOTPView(APIView):
     permission_classes = []
 
@@ -103,6 +150,13 @@ class VerifyEmailOTPView(APIView):
         if not email or not otp:
             return Response(
                 {"error": "Email and OTP are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate OTP format (should be 6 digits)
+        if not otp.isdigit() or len(otp) != 6:
+            return Response(
+                {"error": "OTP must be a 6-digit number"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -196,8 +250,17 @@ class SelectRoleView(APIView):
         role = request.data.get("role")
         user = request.user
 
+        if not role:
+            return Response(
+                {"error": "Role is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         if role not in ["VISITOR", "EXHIBITOR"]:
-            return Response({"error": "Invalid role"}, status=400)
+            return Response(
+                {"error": "Invalid role. Please select VISITOR or EXHIBITOR"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if role not in user.roles:
             user.roles.append(role)
@@ -235,13 +298,22 @@ class SwitchRoleView(APIView):
         role = request.data.get("role")
         user = request.user
 
+        if not role:
+            return Response(
+                {"error": "Role is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         if role not in ["VISITOR", "EXHIBITOR"]:
-            return Response({"error": "Invalid role"}, status=400)
+            return Response(
+                {"error": "Invalid role. Please select VISITOR or EXHIBITOR"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if role not in user.roles:
             return Response(
-                {"error": "Role not assigned to user"},
-                status=400
+                {"error": "You do not have access to this role"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         user.active_role = role
@@ -263,7 +335,13 @@ class UpdateProfileView(APIView):
         if not username:
             return Response(
                 {"error": "Username is required"},
-                status=400
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(username.strip()) < 2:
+            return Response(
+                {"error": "Username must be at least 2 characters long"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         user.username = username
