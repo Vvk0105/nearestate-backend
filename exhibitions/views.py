@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication, VisitorRegistration, Property, PropertyImage
 from rest_framework.parsers import MultiPartParser, FormParser
-from accounts.permissions import IsAdminUserRole
+from accounts.permissions import IsAdminUserRole, IsExhibitorWithProfile
 from .serializers import ExhibitionSerializer, PropertySerializer, ExhibitorProfileSerializer, ExhibitorApplicationSerializer
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
@@ -60,6 +60,10 @@ class ExhibitorProfileView(APIView):
             business_type=request.data.get("business_type"),
             contact_number=request.data.get("contact_number"),
         )
+
+        # Mark profile as completed
+        user.profile_completed = True
+        user.save()
 
         serializer = ExhibitorProfileSerializer(profile)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -274,7 +278,7 @@ class AdminDeleteExhibitionView(APIView):
 
 class ExhibitorApplyView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsExhibitorWithProfile]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, exhibition_id):
@@ -508,7 +512,7 @@ class AdminQRScanView(APIView):
 
 class ExhibitorCreatePropertyView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsExhibitorWithProfile]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, exhibition_id):
@@ -555,7 +559,7 @@ class ExhibitorCreatePropertyView(APIView):
 
 class ExhibitorMyPropertiesView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsExhibitorWithProfile]
 
     def get(self, request):
         props = Property.objects.filter(exhibitor=request.user)
@@ -563,7 +567,7 @@ class ExhibitorMyPropertiesView(APIView):
 
 class ExhibitorDeletePropertyView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsExhibitorWithProfile]
 
     def delete(self, request, property_id):
         prop = Property.objects.get(id=property_id)
@@ -576,7 +580,7 @@ class ExhibitorDeletePropertyView(APIView):
     
 class ExhibitorEditPropertyView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsExhibitorWithProfile]
 
     def patch(self, request, property_id):
         prop = Property.objects.get(id=property_id)

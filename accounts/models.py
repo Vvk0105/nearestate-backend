@@ -17,6 +17,7 @@ class User(AbstractUser):
         blank=True,
         null=True
     )
+    profile_completed = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]

@@ -83,13 +83,13 @@ def send_exhibitor_approval_email(
     msg.attach_alternative(html_content, "text/html")
     
     # Embed logo
-    logo_path = os.path.join(settings.STATIC_ROOT, 'emails', 'logo.png')
-    if os.path.exists(logo_path):
-        with open(logo_path, 'rb') as f:
-            logo_img = MIMEImage(f.read())
-            logo_img.add_header('Content-ID', '<logo>')
-            logo_img.add_header('Content-Disposition', 'inline', filename='logo.png')
-            msg.attach(logo_img)
+    # logo_path = os.path.join(settings.STATIC_ROOT, 'emails', 'logo.png')
+    # if os.path.exists(logo_path):
+    #     with open(logo_path, 'rb') as f:
+    #         logo_img = MIMEImage(f.read())
+    #         logo_img.add_header('Content-ID', '<logo>')
+    #         logo_img.add_header('Content-Disposition', 'inline', filename='logo.png')
+    #         msg.attach(logo_img)
     
     # Attach badge if provided
     if badge_path and os.path.exists(badge_path):

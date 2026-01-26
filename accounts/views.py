@@ -8,6 +8,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 from .models import EmailOTP, User
 from .utils import generate_otp
@@ -140,6 +141,49 @@ class RefreshTokenView(APIView):
             )
 
 
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get("refresh")
+            
+            if not refresh_token:
+                return Response(
+                    {"error": "Refresh token is required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                # Try to blacklist the refresh token
+                token = RefreshToken(refresh_token)
+                # Use the correct method to blacklist
+                from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+                
+                # Find the outstanding token and blacklist it
+                jti = token.payload.get('jti')
+                outstanding_token = OutstandingToken.objects.filter(jti=jti).first()
+                if outstanding_token:
+                    BlacklistedToken.objects.get_or_create(token=outstanding_token)
+            except ImportError:
+                # Token blacklist not installed, just return success
+                # Tokens will expire naturally
+                pass
+            except Exception as e:
+                # Log the error but still return success
+                print(f"Token blacklist error: {e}")
+            
+            return Response(
+                {"message": "Successfully logged out"},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"error": "Logout failed", "detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
 class VerifyEmailOTPView(APIView):
     permission_classes = []
 
@@ -188,7 +232,9 @@ class VerifyEmailOTPView(APIView):
             "access": str(refresh.access_token),
             "refresh": str(refresh),
             "role": user.roles,
-            "is_new_user": created
+            "active_role": user.active_role,
+            "is_new_user": created,
+            "profile_completed": user.profile_completed
         })
 
 
@@ -239,7 +285,9 @@ class GoogleLoginView(APIView):
             "access": str(refresh.access_token),
             "refresh": str(refresh),
             "role": user.roles,
-            "is_new_user": created
+            "active_role": user.active_role,
+            "is_new_user": created,
+            "profile_completed": user.profile_completed
         })
 
 class SelectRoleView(APIView):
@@ -271,7 +319,8 @@ class SelectRoleView(APIView):
         return Response({
             "message": "Role activated",
             "active_role": user.active_role,
-            "roles": user.roles
+            "roles": user.roles,
+            "profile_completed": user.profile_completed
         })
 
 
@@ -286,7 +335,8 @@ class CurrentUserView(APIView):
             "email": u.email,
             "username": u.username,
             "roles": u.roles,
-            "active_role": u.active_role
+            "active_role": u.active_role,
+            "profile_completed": u.profile_completed
         })
 
 
@@ -321,7 +371,8 @@ class SwitchRoleView(APIView):
 
         return Response({
             "message": "Role switched",
-            "active_role": user.active_role
+            "active_role": user.active_role,
+            "profile_completed": user.profile_completed
         })
 
 class UpdateProfileView(APIView):
