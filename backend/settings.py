@@ -180,5 +180,15 @@ CELERY_TASK_SERIALIZER = "json"
 
 CELERY_RESULT_BACKEND = "redis://redis:6379/0"
 
+# Celery Beat Schedule
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'deactivate-expired-events-daily': {
+        'task': 'exhibitions.utils.tasks.deactivate_expired_events',
+        'schedule': crontab(hour=0, minute=0),
+    },
+}
+
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024

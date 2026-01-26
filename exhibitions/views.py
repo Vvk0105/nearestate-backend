@@ -379,7 +379,7 @@ class PublicExhibitionListView(APIView):
     permission_classes = []
 
     def get(self, request):
-        exhibitions = Exhibition.objects.filter(is_active=True)
+        exhibitions = Exhibition.objects.filter().order_by("-created_at")
         return Response(
             ExhibitionSerializer(exhibitions, many=True, context={'request': request}).data
         )

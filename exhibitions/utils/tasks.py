@@ -4,6 +4,11 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from email.mime.image import MIMEImage
 import os
+from django.utils import timezone
+from datetime import date
+import logging
+
+logger = logging.getLogger(__name__)
 
 @shared_task(
     bind=True,
@@ -91,3 +96,35 @@ def send_exhibitor_approval_email(
         msg.attach_file(badge_path)
     
     msg.send(fail_silently=False)
+
+
+@shared_task
+def deactivate_expired_events():
+    """
+    Deactivate events where the end_date has passed.
+    This task should be run periodically (e.g., daily) via Celery Beat.
+    """
+    from exhibitions.models import Exhibition
+    
+    today = date.today()
+    
+    # Find all active events where end_date is in the past
+    expired_events = Exhibition.objects.filter(
+        is_active=True,
+        end_date__lt=today
+    )
+    
+    count = expired_events.count()
+    
+    if count > 0:
+        # Get event names for logging
+        event_names = list(expired_events.values_list('name', flat=True))
+        
+        # Deactivate the events
+        expired_events.update(is_active=False)
+        
+        logger.info(f"Deactivated {count} expired event(s): {', '.join(event_names)}")
+        return f"Successfully deactivated {count} event(s)"
+    else:
+        logger.info("No expired events found to deactivate")
+        return "No expired events to deactivate"
