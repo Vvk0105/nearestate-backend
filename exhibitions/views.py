@@ -124,6 +124,7 @@ class AdminCreateExhibitionView(APIView):
             country=data["country"],
             booth_capacity=data["booth_capacity"],
             visitor_capacity=data["visitor_capacity"],
+            registration_fee=data.get("registration_fee"),
             map_image=data.get("map_image"),
         )
 
@@ -198,7 +199,7 @@ class AdminUpdateExhibitionView(APIView):
         for field in [
             "name", "description", "start_date", "end_date",
             "venue", "city", "state", "country", "is_active", 
-            "booth_capacity", "visitor_capacity"
+            "booth_capacity", "visitor_capacity", "registration_fee"
         ]:
             if field in request.data:
                 value = request.data[field]
