@@ -384,7 +384,14 @@ class PublicExhibitionListView(APIView):
     permission_classes = []
 
     def get(self, request):
-        exhibitions = Exhibition.objects.filter().order_by("-created_at")
+        # CRITICAL: Use prefetch_related to avoid N+1 query problem
+        # Without this, each exhibition triggers a separate query for its images
+        exhibitions = (
+            Exhibition.objects
+            .prefetch_related('images')  # Load all images in one query
+            .filter()
+            .order_by("-created_at")
+        )
         return Response(
             ExhibitionSerializer(exhibitions, many=True, context={'request': request}).data
         )
