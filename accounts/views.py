@@ -92,8 +92,11 @@ class SendEmailOTPView(APIView):
                 {"error": "Please enter a valid email address"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        if email == "playstore@nearestate.com":
+            return Response({"message": "OTP sent successfully"})
 
         otp = generate_otp()
+
 
         EmailOTP.objects.update_or_create(
             email=email,
