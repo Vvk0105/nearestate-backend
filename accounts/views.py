@@ -204,22 +204,25 @@ class VerifyEmailOTPView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            otp_record = EmailOTP.objects.get(email=email, otp=otp)
-        except EmailOTP.DoesNotExist:
-            return Response(
-                {"error": "Invalid OTP"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if email == "playstore@nearestate.com" and otp == "123456":
+            # Bypass OTP check for Play Store review
+            pass
+        else:
+            try:
+                otp_record = EmailOTP.objects.get(email=email, otp=otp)
+                if otp_record.is_expired():
+                    return Response(
+                        {"error": "OTP expired"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                otp_record.is_verified = True
+                otp_record.save()
+            except EmailOTP.DoesNotExist:
+                return Response(
+                    {"error": "Invalid OTP"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        if otp_record.is_expired():
-            return Response(
-                {"error": "OTP expired"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        otp_record.is_verified = True
-        otp_record.save()
 
         user, created = User.objects.get_or_create(
             email=email,
