@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import SendEmailOTPView, VerifyEmailOTPView, RefreshTokenView, GoogleLoginView, SelectRoleView, CurrentUserView, UpdateProfileView, SwitchRoleView, AdminLoginView, LogoutView
+from .views import SendEmailOTPView, VerifyEmailOTPView, RefreshTokenView, GoogleLoginView, SelectRoleView, CurrentUserView, UpdateProfileView, SwitchRoleView, AdminLoginView, LogoutView, DeleteAccountView
 
 urlpatterns = [
     path("admin/login/", AdminLoginView.as_view()),
@@ -13,5 +13,5 @@ urlpatterns = [
     path("me/", CurrentUserView.as_view()),
     path("profile/update/", UpdateProfileView.as_view()),
     path("switch-role/", SwitchRoleView.as_view()),
-
+    path("account/delete/", DeleteAccountView.as_view()),
 ]

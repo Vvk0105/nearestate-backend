@@ -410,3 +410,17 @@ class UpdateProfileView(APIView):
             "email": user.email, 
         })
 
+
+class DeleteAccountView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+        
+        # Additional cleanup if needed (e.g. invalidating tokens) can be done here.
+        # But for now, hard delete is enough since tokens will become invalid when user is gone.
+        user.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
