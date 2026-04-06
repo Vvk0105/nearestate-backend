@@ -384,17 +384,28 @@ class PublicExhibitionListView(APIView):
     permission_classes = []
 
     def get(self, request):
-        # CRITICAL: Use prefetch_related to avoid N+1 query problem
-        # Without this, each exhibition triggers a separate query for its images
+        # Add pagination to prevent server memory exhaustion and hanging requests
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('limit', 10))
+
         exhibitions = (
             Exhibition.objects
             .prefetch_related('images')  # Load all images in one query
-            .filter()
+            .filter(is_active=True)      # Only show active events to the public
             .order_by("-created_at")
         )
-        return Response(
-            ExhibitionSerializer(exhibitions, many=True, context={'request': request}).data
-        )
+
+        total = exhibitions.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        exhibitions_page = exhibitions[start:end]
+
+        return Response({
+            "data": ExhibitionSerializer(exhibitions_page, many=True, context={'request': request}).data,
+            "total": total,
+            "page": page,
+            "limit": page_size
+        })
 
 class ExhibitorApplicationStatusView(APIView):
     authentication_classes = [JWTAuthentication]
