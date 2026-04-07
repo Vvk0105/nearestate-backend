@@ -648,7 +648,10 @@ class PublicExhibitionDetailView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, id):
-        exhibition = get_object_or_404(Exhibition, id=id)
+        # Apply prefetch_related for images to avoid individual query evaluation limits
+        # and ensure only active events are fetchable publicly.
+        query = Exhibition.objects.prefetch_related('images').filter(is_active=True)
+        exhibition = get_object_or_404(query, id=id)
         serializer = ExhibitionSerializer(exhibition, context={'request': request})
         return Response(serializer.data)
 
