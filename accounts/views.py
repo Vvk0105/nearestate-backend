@@ -1,17 +1,17 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 from .models import EmailOTP, User
 from .utils import generate_otp
+from .tasks import send_otp_email_task  # Celery async task — never blocks worker
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -97,7 +97,6 @@ class SendEmailOTPView(APIView):
 
         otp = generate_otp()
 
-
         EmailOTP.objects.update_or_create(
             email=email,
             defaults={
@@ -107,13 +106,10 @@ class SendEmailOTPView(APIView):
             }
         )
 
-        send_mail(
-            subject="Your NearEstate Login OTP",
-            message=f"Your OTP is {otp}. It is valid for 5 minutes.",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
+        # ✅ CRITICAL FIX: Use Celery — never call send_mail() directly in a request
+        # handler. Synchronous SMTP hangs the gunicorn worker until the email server
+        # responds, which can take minutes and permanently blocks all workers.
+        send_otp_email_task.delay(email, otp)
 
         return Response({"message": "OTP sent successfully"})
 
@@ -158,23 +154,13 @@ class LogoutView(APIView):
                 )
             
             try:
-                # Try to blacklist the refresh token
                 token = RefreshToken(refresh_token)
-                # Use the correct method to blacklist
-                from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
-                
-                # Find the outstanding token and blacklist it
-                jti = token.payload.get('jti')
-                outstanding_token = OutstandingToken.objects.filter(jti=jti).first()
-                if outstanding_token:
-                    BlacklistedToken.objects.get_or_create(token=outstanding_token)
-            except ImportError:
-                # Token blacklist not installed, just return success
-                # Tokens will expire naturally
-                pass
+                # ✅ FIX: token_blacklist must be in INSTALLED_APPS for this to work.
+                # It is now added to settings.py. This blacklists the token properly.
+                token.blacklist()
             except Exception as e:
-                # Log the error but still return success
-                print(f"Token blacklist error: {e}")
+                # Still return success — token will expire naturally via ACCESS_TOKEN_LIFETIME
+                print(f"Token blacklist error (non-fatal): {e}")
             
             return Response(
                 {"message": "Successfully logged out"},
@@ -402,12 +388,19 @@ class UpdateProfileView(APIView):
             )
 
         user.username = username
-        user.save()
+        try:
+            user.save()
+        except IntegrityError:
+            # ✅ FIX: Username already taken — seen in logs as duplicate key IntegrityError
+            return Response(
+                {"error": "Username already taken. Please choose another."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response({
             "message": "Profile updated",
             "username": user.username,
-            "email": user.email, 
+            "email": user.email,
         })
 
 

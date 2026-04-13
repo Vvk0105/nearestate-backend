@@ -48,6 +48,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
 
+    # ✅ FIX: token_blacklist MUST be here or logout crashes with AttributeError
+    # This was causing the "OutstandingToken has no attribute 'objects'" error in logs
+    'rest_framework_simplejwt.token_blacklist',
+
     'accounts',
     'exhibitions',
 ]
@@ -97,6 +101,10 @@ DATABASES = {
         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
         "HOST": "db",
         "PORT": 5432,
+        # ✅ FIX: Reuse DB connections across requests instead of opening a new one
+        # every time. Without this, after days of traffic the pg_stat_activity
+        # connection count grows and queries slow down, contributing to worker hangs.
+        "CONN_MAX_AGE": 60,  # seconds — reuse connections for up to 1 minute
     }
 }
 
