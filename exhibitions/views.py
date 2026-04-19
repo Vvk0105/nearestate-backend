@@ -328,7 +328,7 @@ class AdminListExhibitorApplications(APIView):
     permission_classes = [IsAdminUserRole]
 
     def get(self, request, exhibition_id):
-        apps = ExhibitorApplication.objects.filter(exhibition_id=exhibition_id)
+        apps = ExhibitorApplication.objects.filter(exhibition_id=exhibition_id).select_related('user', 'user__exhibitorprofile')
 
         serializer = ExhibitorApplicationSerializer(
             apps,
@@ -667,14 +667,14 @@ class PublicExhibitorsByExhibitionView(APIView):
 
         data = []
         for app in applications:
-            profile = app.user.exhibitorprofile
+            profile = getattr(app.user, "exhibitorprofile", None)
 
             data.append({
                 "id": app.user.id,
-                "company_name": profile.company_name,
-                "business_type": profile.business_type,
-                "council_area": profile.council_area,
-                "contact_number": profile.contact_number,
+                "company_name": profile.company_name if profile else app.user.username,
+                "business_type": profile.business_type if profile else "N/A",
+                "council_area": profile.council_area if profile else "N/A",
+                "contact_number": profile.contact_number if profile else "N/A",
                 "booth_number": app.booth_number,
             })
 
