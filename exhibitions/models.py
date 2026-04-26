@@ -45,6 +45,11 @@ class Exhibition(models.Model):
     is_active = models.BooleanField(default=True)
 
     registration_fee = models.PositiveIntegerField(blank=True, null=True)
+    payment_details = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Free-text payment instructions shown to exhibitors (e.g. Account No, IFSC, IBAN, SWIFT)"
+    )
 
     def save(self, *args, **kwargs):
         if not self.pk:

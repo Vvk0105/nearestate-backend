@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Entry Pass</title>
+  <style>
+    body {
+      margin: 0; padding: 0;
+      background-color: #f1f5f9;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #1e293b;
+    }
+    .wrapper {
+      max-width: 560px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    .header {
+      background: linear-gradient(135deg, #1d4ed8 0%, #4f46e5 100%);
+      padding: 36px 32px;
+      text-align: center;
+    }
+    .header h1 {
+      color: #ffffff;
+      font-size: 22px;
+      margin: 0 0 6px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .header p {
+      color: rgba(255,255,255,0.82);
+      font-size: 14px;
+      margin: 0;
+    }
+    .body {
+      padding: 36px 32px;
+    }
+    .greeting {
+      font-size: 16px;
+      color: #374151;
+      margin-bottom: 20px;
+    }
+    .event-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 28px;
+    }
+    .event-box h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 0 0 12px;
+    }
+    .event-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .meta-row {
+      font-size: 14px;
+      color: #64748b;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .meta-row span.label {
+      font-weight: 600;
+      color: #475569;
+      min-width: 70px;
+    }
+    .qr-section {
+      text-align: center;
+      margin: 28px 0;
+    }
+    .qr-section p.caption {
+      font-size: 13px;
+      color: #64748b;
+      margin: 12px 0 0;
+    }
+    .qr-section .qr-uuid {
+      font-size: 11px;
+      color: #94a3b8;
+      font-family: monospace;
+      margin-top: 8px;
+      word-break: break-all;
+    }
+    .qr-section img {
+      width: 200px;
+      height: 200px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 8px;
+      background: #fff;
+    }
+    .badge {
+      display: inline-block;
+      background: #dcfce7;
+      color: #16a34a;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 6px 16px;
+      margin-bottom: 24px;
+    }
+    .note {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #1d4ed8;
+      margin-bottom: 28px;
+    }
+    .footer {
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 20px 32px;
+      text-align: center;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🎟️ Your Entry Pass is Ready!</h1>
+      <p>Scan this QR code at the venue entrance</p>
+    </div>
+
+    <div class="body">
+      <p class="greeting">
+        Hi <strong>{{ visitor_name }}</strong>,<br />
+        You're officially registered for the event below. Please save this email and present your QR code at the entrance.
+      </p>
+
+      <div class="event-box">
+        <h2>{{ exhibition_name }}</h2>
+        <div class="event-meta">
+          <div class="meta-row">
+            <span class="label">📅 Dates</span>
+            <span>{{ start_date }} – {{ end_date }}</span>
+          </div>
+          <div class="meta-row">
+            <span class="label">📍 Venue</span>
+            <span>{{ exhibition_venue }}, {{ exhibition_city }}</span>
+          </div>
+        </div>
+      </div>
+
+      <span class="badge">✅ Registration Confirmed</span>
+
+      <div class="qr-section">
+        {% if has_qr_image %}
+          <img src="cid:qrcode" alt="Your QR Entry Pass" />
+        {% endif %}
+        <p class="caption"><strong>Show this QR code at the entrance</strong></p>
+        <p class="qr-uuid">ID: {{ qr_code_uuid }}</p>
+      </div>
+
+      <div class="note">
+        📌 Keep this email handy on your phone. Our staff will scan your QR code at check-in. No printout required.
+      </div>
+    </div>
+
+    <div class="footer">
+      © NearEstate — This is an automated message, please do not reply.
+    </div>
+  </div>
+</body>
+</html>

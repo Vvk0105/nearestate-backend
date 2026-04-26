@@ -9,7 +9,7 @@ from .serializers import ExhibitionSerializer, PropertySerializer, ExhibitorProf
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from exhibitions.utils.tasks import send_event_email, send_exhibitor_approval_email
+from exhibitions.utils.tasks import send_event_email, send_exhibitor_approval_email, send_visitor_qr_email
 from accounts.models import User
 from exhibitions.utils.image_tasks import compress_model_image
 
@@ -125,6 +125,7 @@ class AdminCreateExhibitionView(APIView):
             booth_capacity=data["booth_capacity"],
             visitor_capacity=data["visitor_capacity"],
             registration_fee=data.get("registration_fee"),
+            payment_details=data.get("payment_details"),
             map_image=data.get("map_image"),
         )
 
@@ -198,8 +199,9 @@ class AdminUpdateExhibitionView(APIView):
 
         for field in [
             "name", "description", "start_date", "end_date",
-            "venue", "city", "state", "country", "is_active", 
-            "booth_capacity", "visitor_capacity", "registration_fee"
+            "venue", "city", "state", "country", "is_active",
+            "booth_capacity", "visitor_capacity", "registration_fee",
+            "payment_details"
         ]:
             if field in request.data:
                 value = request.data[field]
@@ -472,13 +474,25 @@ class VisitorRegisterView(APIView):
                 status=400
             )
 
-        VisitorRegistration.objects.create(
+        registration = VisitorRegistration.objects.create(
             user=user,
             exhibition=exhibition
         )
 
         exhibition.available_visitors -= 1
         exhibition.save()
+
+        # Send QR confirmation email to the visitor (async via Celery)
+        send_visitor_qr_email.delay(
+            email=user.email,
+            visitor_name=user.username,
+            exhibition_name=exhibition.name,
+            exhibition_venue=exhibition.venue,
+            exhibition_city=exhibition.city,
+            start_date=str(exhibition.start_date),
+            end_date=str(exhibition.end_date),
+            qr_code_uuid=str(registration.qr_code),
+        )
 
         return Response({"message": "Registered successfully"})
 
