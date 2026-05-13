@@ -851,3 +851,248 @@ class AdminToggleVisitorCheckInView(APIView):
         reg.is_checked_in = not reg.is_checked_in
         reg.save()
         return Response({"id": reg.id, "is_checked_in": reg.is_checked_in})
+
+
+class AdminCheckExhibitorView(APIView):
+    """
+    Lookup endpoint for the admin 'Add Exhibitor' multi-step modal.
+    Returns whether the email belongs to an existing user and whether they
+    already have an ExhibitorProfile, along with the profile details.
+
+    GET /exhibitions/admin/exhibitions/<id>/check-exhibitor/?email=...
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request, exhibition_id):
+        email = request.query_params.get("email", "").strip().lower()
+
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({
+                "user_exists": False,
+                "profile_exists": False,
+                "already_registered": False,
+                "profile": None,
+            })
+
+        # Check if already registered for this event
+        already_registered = ExhibitorApplication.objects.filter(
+            user=user, exhibition_id=exhibition_id
+        ).exists()
+
+        profile = getattr(user, "exhibitorprofile", None)
+
+        return Response({
+            "user_exists": True,
+            "profile_exists": profile is not None,
+            "already_registered": already_registered,
+            "profile": {
+                "company_name": profile.company_name,
+                "business_type": profile.business_type,
+                "council_area": profile.council_area,
+                "contact_number": profile.contact_number,
+            } if profile else None,
+        })
+
+
+class AdminAddExhibitorView(APIView):
+    """
+    Admin-only endpoint to directly add (and auto-approve) an exhibitor for an event.
+
+    Accepts multipart/form-data so an optional badge file can be uploaded.
+    If the user already exists their account is reused. If an ExhibitorProfile
+    already exists it is kept; otherwise one is created from the submitted data.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, exhibition_id):
+        email = request.data.get("email", "").strip().lower()
+        company_name = request.data.get("company_name", "").strip()
+        council_area = request.data.get("council_area", "").strip()
+        business_type = request.data.get("business_type", "").strip()
+        contact_number = request.data.get("contact_number", "").strip()
+        booth_number = request.data.get("booth_number")
+        badge_file = request.FILES.get("badge")
+
+        # --- Validate required fields ---
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not booth_number:
+            return Response({"error": "Booth number is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            exhibition = Exhibition.objects.get(id=exhibition_id)
+        except Exhibition.DoesNotExist:
+            return Response({"error": "Exhibition not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # --- Check booth availability ---
+        if exhibition.available_booths <= 0:
+            return Response({"error": "No booths available for this event"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- Get or create user ---
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={"username": email.split("@")[0]}
+        )
+
+        # Append EXHIBITOR role if not already present
+        if "EXHIBITOR" not in user.roles:
+            user.roles.append("EXHIBITOR")
+        user.active_role = "EXHIBITOR"
+        user.profile_completed = True
+        user.save()
+
+        # --- Get or create ExhibitorProfile ---
+        profile, profile_created = ExhibitorProfile.objects.get_or_create(
+            user=user,
+            defaults={
+                "company_name": company_name or email.split("@")[0],
+                "council_area": council_area or "N/A",
+                "business_type": business_type or "OTHER_BUSINESSES",
+                "contact_number": contact_number or "N/A",
+            }
+        )
+
+        # If profile already existed but new values were submitted, update them
+        if not profile_created:
+            updated = False
+            if company_name:
+                profile.company_name = company_name
+                updated = True
+            if council_area:
+                profile.council_area = council_area
+                updated = True
+            if business_type:
+                profile.business_type = business_type
+                updated = True
+            if contact_number:
+                profile.contact_number = contact_number
+                updated = True
+            if updated:
+                profile.save()
+
+        # --- Check for duplicate application ---
+        if ExhibitorApplication.objects.filter(user=user, exhibition=exhibition).exists():
+            return Response(
+                {"error": "This exhibitor is already registered for this event"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # --- Create auto-approved application ---
+        app = ExhibitorApplication.objects.create(
+            user=user,
+            exhibition=exhibition,
+            status="APPROVED",
+            booth_number=booth_number,
+            payment_screenshot=None,
+        )
+
+        # Attach badge if provided
+        if badge_file:
+            app.badge = badge_file
+            app.save()
+
+        # --- Decrement available booths ---
+        exhibition.available_booths -= 1
+        exhibition.save()
+
+        # --- Send approval email (async via Celery) ---
+        send_exhibitor_approval_email.delay(
+            email=user.email,
+            exhibitor_name=profile.company_name,
+            exhibition_name=exhibition.name,
+            booth_number=booth_number,
+            badge_path=app.badge.path if app.badge else None,
+        )
+
+
+        return Response({
+            "message": "Exhibitor added and approved successfully",
+            "user_created": created,
+            "profile_created": profile_created,
+            "booth_number": booth_number,
+        }, status=status.HTTP_201_CREATED)
+
+
+class AdminAddVisitorView(APIView):
+    """
+    Admin-only endpoint to directly register a visitor for an event.
+
+    If the user already exists their account is reused and the VISITOR role is
+    appended. A VisitorRegistration is created and the standard QR pass email
+    is dispatched.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def post(self, request, exhibition_id):
+        email = request.data.get("email", "").strip().lower()
+
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            exhibition = Exhibition.objects.get(id=exhibition_id)
+        except Exhibition.DoesNotExist:
+            return Response({"error": "Exhibition not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # --- Check visitor capacity ---
+        if exhibition.available_visitors <= 0:
+            return Response({"error": "Visitor capacity is full for this event"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- Get or create user ---
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={"username": email.split("@")[0]}
+        )
+
+        # Append VISITOR role if not already present
+        if "VISITOR" not in user.roles:
+            user.roles.append("VISITOR")
+        # Only set active_role to VISITOR if user has no current active role
+        if not user.active_role:
+            user.active_role = "VISITOR"
+        user.save()
+
+        # --- Check for duplicate registration ---
+        if VisitorRegistration.objects.filter(user=user, exhibition=exhibition).exists():
+            return Response(
+                {"error": "This visitor is already registered for this event"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # --- Create registration ---
+        registration = VisitorRegistration.objects.create(
+            user=user,
+            exhibition=exhibition
+        )
+
+        # --- Decrement available visitors ---
+        exhibition.available_visitors -= 1
+        exhibition.save()
+
+        # --- Send QR pass email (async via Celery) ---
+        send_visitor_qr_email.delay(
+            email=user.email,
+            visitor_name=user.username,
+            exhibition_name=exhibition.name,
+            exhibition_venue=exhibition.venue,
+            exhibition_city=exhibition.city,
+            start_date=str(exhibition.start_date),
+            end_date=str(exhibition.end_date),
+            qr_code_uuid=str(registration.qr_code),
+        )
+
+        return Response({
+            "message": "Visitor registered successfully",
+            "user_created": created,
+            "qr_code": str(registration.qr_code),
+        }, status=status.HTTP_201_CREATED)
+

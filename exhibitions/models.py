@@ -11,11 +11,38 @@ class ExhibitorProfile(models.Model):
     company_name = models.CharField(max_length=255)
     council_area = models.CharField(max_length=255)
     business_type = models.CharField(
-        max_length=50,
+        max_length=60,
         choices=[
-            ("DEVELOPER", "Developer"),
-            ("BROKER", "Broker"),
-            ("LOAN", "Loan Provider"),
+            ("DEVELOPER", "Real Estate Developer"),
+            ("BROKER", "Real Estate Agent / Broker"),
+            ("LOAN", "Mortgage / Loan Provider"),
+            ("PROPERTY_REAL_ESTATE", "Property & Real Estate"),
+            ("BUILDERS_CONSTRUCTION", "Builders & Construction"),
+            ("TRADES_CONTRACTORS", "Trades & Contractors"),
+            ("ARCHITECTURE_DESIGN_ENGINEERING", "Architecture, Design & Engineering"),
+            ("FINANCE_BANKING", "Finance & Banking"),
+            ("LEGAL_COMPLIANCE", "Legal & Compliance"),
+            ("INSPECTION_CERTIFICATION", "Inspection & Certification"),
+            ("PROPERTY_SERVICES", "Property Services"),
+            ("TECHNOLOGY_PROPTECH", "Technology & PropTech"),
+            ("FURNITURE_FITOUT_LIFESTYLE", "Furniture, Fitout & Lifestyle"),
+            ("GOVERNMENT_COMMUNITY", "Government & Community"),
+            ("EDUCATION_MEDIA", "Education & Media"),
+            ("TELECOM_INFRASTRUCTURE", "Telecom & Infrastructure"),
+            ("RETAIL_MISCELLANEOUS", "Retail & Miscellaneous"),
+            ("HOSPITALITY_CATERING", "Hospitality & Catering"),
+            ("HEALTH_WELLNESS", "Health & Wellness"),
+            ("SUSTAINABILITY_ENERGY", "Sustainability & Energy"),
+            ("TRANSPORT_LOGISTICS", "Transport & Logistics"),
+            ("RECRUITMENT_HR", "Recruitment & HR"),
+            ("MARKETING_ADVERTISING", "Marketing & Advertising"),
+            ("EVENTS_ENTERTAINMENT", "Events & Entertainment"),
+            ("SECURITY_SAFETY", "Security & Safety"),
+            ("MANUFACTURING_INDUSTRIAL", "Manufacturing & Industrial"),
+            ("INVESTMENT_WEALTH_MANAGEMENT", "Investment & Wealth Management"),
+            ("TRAINING_PROFESSIONAL_DEVELOPMENT", "Training & Professional Development"),
+            ("HOME_LIVING", "Home & Living"),
+            ("OTHER_BUSINESSES", "Other Businesses"),
         ],
     )
     contact_number = models.CharField(max_length=15)
@@ -78,7 +105,9 @@ class ExhibitorApplication(models.Model):
     exhibition = models.ForeignKey("Exhibition", on_delete=models.CASCADE)
 
     payment_screenshot = models.ImageField(
-        upload_to="payments/screenshots/"
+        upload_to="payments/screenshots/",
+        blank=True,
+        null=True,
     )
     transaction_id = models.CharField(
         max_length=100, blank=True, null=True
