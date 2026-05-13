@@ -72,6 +72,7 @@ class Exhibition(models.Model):
     is_active = models.BooleanField(default=True)
 
     registration_fee = models.PositiveIntegerField(blank=True, null=True)
+    currency_symbol = models.CharField(max_length=10, default='₹')
     payment_details = models.TextField(
         blank=True,
         null=True,
