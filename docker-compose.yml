@@ -10,7 +10,9 @@ services:
       --graceful-timeout 30
       --max-requests 1000
       --max-requests-jitter 100
-      --log-level info
+      --log-level debug
+      --access-logfile -
+      --error-logfile -
     volumes:
     - /var/www/nearestate-media:/app/media
     - /var/www/nearestate-static:/app/static
