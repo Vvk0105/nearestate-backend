@@ -6,7 +6,7 @@ services:
       - /var/www/nearestate-media:/app/media
       - /var/www/nearestate-static:/app/static
     ports:
-      - "8000:8000"
+      - "8001:8000"
 
   celery:
     command: celery -A backend worker -l info
