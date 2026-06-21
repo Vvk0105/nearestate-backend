@@ -21,7 +21,7 @@ class ExhibitorProfileView(APIView):
     def get(self, request):
         user = request.user
 
-        if user.active_role != "EXHIBITOR":
+        if user.active_role != "EXHIBITOR" and user.active_role != "ADMIN":
             return Response(
                 {"error": "Not an exhibitor"},
                 status=status.HTTP_403_FORBIDDEN
@@ -41,7 +41,7 @@ class ExhibitorProfileView(APIView):
     def post(self, request):
         user = request.user
 
-        if user.active_role != "EXHIBITOR":
+        if user.active_role != "EXHIBITOR" and user.active_role != "ADMIN":
             return Response(
                 {"error": "Not an exhibitor"},
                 status=status.HTTP_403_FORBIDDEN
@@ -71,7 +71,7 @@ class ExhibitorProfileView(APIView):
     def patch(self, request):
         user = request.user
 
-        if user.active_role != "EXHIBITOR":
+        if user.active_role != "EXHIBITOR" and user.active_role != "ADMIN":
             return Response(
                 {"error": "Not an exhibitor"},
                 status=status.HTTP_403_FORBIDDEN
@@ -288,7 +288,7 @@ class ExhibitorApplyView(APIView):
     def post(self, request, exhibition_id):
         user = request.user
 
-        if user.active_role != "EXHIBITOR":
+        if user.active_role != "EXHIBITOR" and user.active_role != "ADMIN":
             return Response(
                 {"error": "Only exhibitors can apply"},
                 status=403
@@ -417,7 +417,7 @@ class ExhibitorApplicationStatusView(APIView):
     def get(self, request):
         user = request.user
 
-        if user.active_role != "EXHIBITOR":
+        if user.active_role != "EXHIBITOR" and user.active_role != "ADMIN":
             return Response([], status=200)
 
         apps = ExhibitorApplication.objects.filter(user=user)
@@ -453,7 +453,7 @@ class VisitorRegisterView(APIView):
     def post(self, request, exhibition_id):
         user = request.user
 
-        if user.active_role != "VISITOR":
+        if user.active_role != "VISITOR" and user.active_role != "ADMIN":
             return Response(
                 {"error": "Only visitors can register"},
                 status=403
@@ -552,7 +552,7 @@ class ExhibitorCreatePropertyView(APIView):
     def post(self, request, exhibition_id):
         user = request.user
 
-        if user.active_role != "EXHIBITOR":
+        if user.active_role != "EXHIBITOR" and user.active_role != "ADMIN":
             return Response({"error": "Not exhibitor"}, status=403)
 
         approved = ExhibitorApplication.objects.filter(
@@ -698,7 +698,7 @@ class PublicExhibitorsByExhibitionView(APIView):
 
     def patch(self, request):
         user = request.user
-        if user.active_role != "EXHIBITOR":
+        if user.active_role != "EXHIBITOR" and user.active_role != "ADMIN":
             return Response({"error": "Not an exhibitor"}, status=403)
 
         profile = get_object_or_404(ExhibitorProfile, user=user)

@@ -18,6 +18,9 @@ class IsExhibitorWithProfile(BasePermission):
         if not request.user.is_authenticated:
             return False
         
+        if request.user.active_role == "ADMIN":
+            return True
+            
         if request.user.active_role != "EXHIBITOR":
             return False
         

@@ -10,7 +10,7 @@ services:
       --graceful-timeout 30
       --max-requests 1000
       --max-requests-jitter 100
-      --log-level debug
+      --log-level info
       --access-logfile -
       --error-logfile -
     volumes:
