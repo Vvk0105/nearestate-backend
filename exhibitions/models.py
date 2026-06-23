@@ -57,6 +57,8 @@ class Exhibition(models.Model):
     end_date = models.DateField()
 
     venue = models.CharField(max_length=255)
+    venue_link = models.URLField(max_length=500, blank=True, null=True, help_text="Optional link to the venue website or event page")
+    location_link = models.URLField(max_length=500, blank=True, null=True, help_text="Optional Google Maps or location link for the venue")
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
     country = models.CharField(max_length=100)

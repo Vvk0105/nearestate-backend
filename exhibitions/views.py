@@ -119,6 +119,8 @@ class AdminCreateExhibitionView(APIView):
             start_date=data["start_date"],
             end_date=data["end_date"],
             venue=data["venue"],
+            venue_link=data.get("venue_link") or None,
+            location_link=data.get("location_link") or None,
             city=data["city"],
             state=data["state"],
             country=data["country"],
@@ -202,7 +204,7 @@ class AdminUpdateExhibitionView(APIView):
             "name", "description", "start_date", "end_date",
             "venue", "city", "state", "country", "is_active",
             "booth_capacity", "visitor_capacity", "registration_fee",
-            "currency_symbol", "payment_details"
+            "currency_symbol", "payment_details", "venue_link", "location_link"
         ]:
             if field in request.data:
                 value = request.data[field]
@@ -228,6 +230,9 @@ class AdminUpdateExhibitionView(APIView):
                         setattr(exhibition, field, new_cap)
                     except ValueError:
                         pass
+                elif field in ("venue_link", "location_link"):
+                    # Store empty strings as None so the field is truly cleared
+                    setattr(exhibition, field, value.strip() or None)
                 else:
                     setattr(exhibition, field, value)
 
