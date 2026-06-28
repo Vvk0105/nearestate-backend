@@ -12,6 +12,8 @@ from rest_framework import status
 from exhibitions.utils.tasks import send_event_email, send_exhibitor_approval_email, send_visitor_qr_email
 from accounts.models import User
 from exhibitions.utils.image_tasks import compress_model_image
+from django.utils import timezone
+from django.db.models import Case, When, Value, IntegerField
 
 
 class ExhibitorProfileView(APIView):
@@ -395,13 +397,48 @@ class PublicExhibitionListView(APIView):
         # Add pagination to prevent server memory exhaustion and hanging requests
         page = int(request.query_params.get('page', 1))
         page_size = int(request.query_params.get('limit', 10))
+        status_filter = request.query_params.get('status', 'all')
 
-        exhibitions = (
-            Exhibition.objects
-            .prefetch_related('images')  # Load all images in one query
-            .filter(is_active=True)      # Only show active events to the public
-            .order_by("start_date")
-        )
+        today = timezone.localdate()
+
+        # Build base active exhibitions query
+        base_query = Exhibition.objects.prefetch_related('images').filter(is_active=True)
+
+        # Calculate counts for all status types (all, ongoing, upcoming, past)
+        all_count = base_query.count()
+        ongoing_count = base_query.filter(start_date__lte=today, end_date__gte=today).count()
+        upcoming_count = base_query.filter(start_date__gt=today).count()
+        past_count = base_query.filter(end_date__lt=today).count()
+
+        counts = {
+            "all": all_count,
+            "ongoing": ongoing_count,
+            "upcoming": upcoming_count,
+            "past": past_count
+        }
+
+        # Apply specific status filtering
+        if status_filter == 'ongoing':
+            exhibitions = base_query.filter(start_date__lte=today, end_date__gte=today).order_by("start_date")
+        elif status_filter == 'upcoming':
+            exhibitions = base_query.filter(start_date__gt=today).order_by("start_date")
+        elif status_filter == 'past':
+            exhibitions = base_query.filter(end_date__lt=today).order_by("-start_date")
+        else: # 'all'
+            # Prioritize: Ongoing (1), Upcoming (2), Past (3)
+            exhibitions = (
+                base_query
+                .annotate(
+                    status_priority=Case(
+                        When(start_date__lte=today, end_date__gte=today, then=Value(1)),
+                        When(start_date__gt=today, then=Value(2)),
+                        When(end_date__lt=today, then=Value(3)),
+                        default=Value(3),
+                        output_field=IntegerField()
+                    )
+                )
+                .order_by("status_priority", "start_date")
+            )
 
         total = exhibitions.count()
         start = (page - 1) * page_size
@@ -412,7 +449,8 @@ class PublicExhibitionListView(APIView):
             "data": ExhibitionSerializer(exhibitions_page, many=True, context={'request': request}).data,
             "total": total,
             "page": page,
-            "limit": page_size
+            "limit": page_size,
+            "counts": counts
         })
 
 class ExhibitorApplicationStatusView(APIView):
