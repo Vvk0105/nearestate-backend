@@ -175,7 +175,7 @@ class AdminListExhibitionsView(APIView):
         page = int(request.query_params.get('page', 1))
         page_size = int(request.query_params.get('limit', 10))
 
-        exhibitions = Exhibition.objects.all().order_by("-start_date")
+        exhibitions = Exhibition.objects.all().order_by("start_date")
 
         if query:
             exhibitions = exhibitions.filter(name__icontains=query)
