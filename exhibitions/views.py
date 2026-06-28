@@ -173,7 +173,7 @@ class AdminListExhibitionsView(APIView):
         page = int(request.query_params.get('page', 1))
         page_size = int(request.query_params.get('limit', 10))
 
-        exhibitions = Exhibition.objects.all().order_by("-created_at")
+        exhibitions = Exhibition.objects.all().order_by("-start_date")
 
         if query:
             exhibitions = exhibitions.filter(name__icontains=query)
@@ -395,7 +395,7 @@ class PublicExhibitionListView(APIView):
             Exhibition.objects
             .prefetch_related('images')  # Load all images in one query
             .filter(is_active=True)      # Only show active events to the public
-            .order_by("-created_at")
+            .order_by("-start_date")
         )
 
         total = exhibitions.count()
@@ -596,7 +596,7 @@ class ExhibitorMyPropertiesView(APIView):
     permission_classes = [IsExhibitorWithProfile]
 
     def get(self, request):
-        props = Property.objects.filter(exhibitor=request.user)
+        props = Property.objects.filter(exhibitor=request.user).order_by("-created_at")
         return Response(PropertySerializer(props, many=True, context={'request': request}).data)
 
 class ExhibitorDeletePropertyView(APIView):
@@ -656,7 +656,7 @@ class PublicExhibitionPropertiesView(APIView):
     permission_classes = []
 
     def get(self, request, exhibitor_id):
-        props = Property.objects.filter(exhibitor_id=exhibitor_id)
+        props = Property.objects.filter(exhibitor_id=exhibitor_id).order_by("-created_at")
         return Response(PropertySerializer(props, many=True, context={'request': request}).data)
 
 class PublicExhibitionDetailView(APIView):
