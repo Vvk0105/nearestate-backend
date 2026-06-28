@@ -400,7 +400,7 @@ class PublicExhibitionListView(APIView):
             Exhibition.objects
             .prefetch_related('images')  # Load all images in one query
             .filter(is_active=True)      # Only show active events to the public
-            .order_by("-start_date")
+            .order_by("start_date")
         )
 
         total = exhibitions.count()
