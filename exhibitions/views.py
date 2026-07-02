@@ -2,10 +2,18 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from .models import ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication, VisitorRegistration, Property, PropertyImage
+from .models import (
+    ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication,
+    VisitorRegistration, Property, PropertyImage,
+    EventRecap, RecapImage, RecapVideo, RecapSocialLink, ExhibitionPriceTier,
+)
 from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.permissions import IsAdminUserRole, IsExhibitorWithProfile
-from .serializers import ExhibitionSerializer, PropertySerializer, ExhibitorProfileSerializer, ExhibitorApplicationSerializer
+from .serializers import (
+    ExhibitionSerializer, PropertySerializer,
+    ExhibitorProfileSerializer, ExhibitorApplicationSerializer,
+    EventRecapSerializer,
+)
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -146,6 +154,23 @@ class AdminCreateExhibitionView(APIView):
                 "image",
             )
 
+        # ── Price Tiers ──
+        import json
+        price_tiers_raw = request.data.get("price_tiers")
+        if price_tiers_raw:
+            try:
+                tiers = json.loads(price_tiers_raw) if isinstance(price_tiers_raw, str) else price_tiers_raw
+                for i, tier in enumerate(tiers):
+                    ExhibitionPriceTier.objects.create(
+                        exhibition=exhibition,
+                        name=tier.get("name", ""),
+                        fee=tier.get("fee", 0),
+                        description=tier.get("description", ""),
+                        order=i,
+                    )
+            except (json.JSONDecodeError, TypeError):
+                pass
+
         users = User.objects.filter(is_active=True).exclude(email="")
         emails = list(users.values_list("email", flat=True))
 
@@ -275,6 +300,24 @@ class AdminUpdateExhibitionView(APIView):
                 id__in=ids, exhibition=exhibition
             ).delete()
 
+        # ── Price Tiers (replace all on update) ──
+        import json
+        price_tiers_raw = request.data.get("price_tiers")
+        if price_tiers_raw is not None:
+            try:
+                tiers = json.loads(price_tiers_raw) if isinstance(price_tiers_raw, str) else price_tiers_raw
+                ExhibitionPriceTier.objects.filter(exhibition=exhibition).delete()
+                for i, tier in enumerate(tiers):
+                    ExhibitionPriceTier.objects.create(
+                        exhibition=exhibition,
+                        name=tier.get("name", ""),
+                        fee=tier.get("fee", 0),
+                        description=tier.get("description", ""),
+                        order=i,
+                    )
+            except (json.JSONDecodeError, TypeError):
+                pass
+
         exhibition.save()
 
         return Response(ExhibitionSerializer(exhibition, context={'request': request}).data)
@@ -286,6 +329,89 @@ class AdminDeleteExhibitionView(APIView):
     def delete(self, request, pk):
         Exhibition.objects.filter(pk=pk).delete()
         return Response({"message": "Deleted"})
+
+
+class AdminEventRecapView(APIView):
+    """GET / PUT the event recap for a past exhibition."""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request, exhibition_id):
+        exhibition = get_object_or_404(Exhibition, pk=exhibition_id)
+        try:
+            recap = exhibition.recap
+        except EventRecap.DoesNotExist:
+            return Response({"detail": "No recap found"}, status=404)
+        serializer = EventRecapSerializer(recap, context={'request': request})
+        return Response(serializer.data)
+
+    def put(self, request, exhibition_id):
+        import json
+        exhibition = get_object_or_404(Exhibition, pk=exhibition_id)
+        recap, _ = EventRecap.objects.get_or_create(exhibition=exhibition)
+
+        # ── Images ──
+        # Remove deleted image IDs
+        remove_img_ids_raw = request.data.get("remove_image_ids", "")
+        if remove_img_ids_raw:
+            ids = [int(x) for x in str(remove_img_ids_raw).split(",") if x.strip().isdigit()]
+            RecapImage.objects.filter(id__in=ids, recap=recap).delete()
+
+        # Add new images
+        for img in request.FILES.getlist("recap_images"):
+            obj = RecapImage.objects.create(recap=recap, image=img)
+            compress_model_image.delay("exhibitions", "RecapImage", obj.id, "image")
+
+        # ── Videos ──
+        # Remove deleted video IDs
+        remove_vid_ids_raw = request.data.get("remove_video_ids", "")
+        if remove_vid_ids_raw:
+            ids = [int(x) for x in str(remove_vid_ids_raw).split(",") if x.strip().isdigit()]
+            RecapVideo.objects.filter(id__in=ids, recap=recap).delete()
+
+        # Add new videos (JSON array: [{youtube_url, title}])
+        new_videos_raw = request.data.get("new_videos")
+        if new_videos_raw:
+            try:
+                new_videos = json.loads(new_videos_raw) if isinstance(new_videos_raw, str) else new_videos_raw
+                existing_count = RecapVideo.objects.filter(recap=recap).count()
+                for i, v in enumerate(new_videos):
+                    RecapVideo.objects.create(
+                        recap=recap,
+                        youtube_url=v.get("youtube_url", ""),
+                        title=v.get("title", ""),
+                        order=existing_count + i,
+                    )
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # ── Social Links ──
+        # Remove deleted social link IDs
+        remove_social_ids_raw = request.data.get("remove_social_ids", "")
+        if remove_social_ids_raw:
+            ids = [int(x) for x in str(remove_social_ids_raw).split(",") if x.strip().isdigit()]
+            RecapSocialLink.objects.filter(id__in=ids, recap=recap).delete()
+
+        # Add new social links (JSON array: [{title, url}])
+        new_socials_raw = request.data.get("new_social_links")
+        if new_socials_raw:
+            try:
+                new_socials = json.loads(new_socials_raw) if isinstance(new_socials_raw, str) else new_socials_raw
+                existing_count = RecapSocialLink.objects.filter(recap=recap).count()
+                for i, s in enumerate(new_socials):
+                    RecapSocialLink.objects.create(
+                        recap=recap,
+                        title=s.get("title", ""),
+                        url=s.get("url", ""),
+                        order=existing_count + i,
+                    )
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        recap.save()
+        serializer = EventRecapSerializer(recap, context={'request': request})
+        return Response(serializer.data)
 
 class ExhibitorApplyView(APIView):
     authentication_classes = [JWTAuthentication]

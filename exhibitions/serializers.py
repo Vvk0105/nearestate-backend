@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import Exhibition, ExhibitionImage, Property, PropertyImage, ExhibitorProfile, ExhibitorApplication
+from .models import (
+    Exhibition, ExhibitionImage, Property, PropertyImage,
+    ExhibitorProfile, ExhibitorApplication,
+    EventRecap, RecapImage, RecapVideo, RecapSocialLink,
+    ExhibitionPriceTier,
+)
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxLengthValidator
 import re
@@ -67,9 +72,61 @@ class ExhibitionImageSerializer(serializers.ModelSerializer):
         return None
 
 
+# ── Price Tiers ───────────────────────────────────────────────────────────
+
+class ExhibitionPriceTierSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExhibitionPriceTier
+        fields = ["id", "name", "fee", "description", "order"]
+
+
+# ── Event Recap ────────────────────────────────────────────────────────────
+
+class RecapImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RecapImage
+        fields = ["id", "image", "order"]
+
+    def get_image(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        elif obj.image:
+            return obj.image.url
+        return None
+
+
+class RecapVideoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecapVideo
+        fields = ["id", "youtube_url", "title", "order"]
+
+
+class RecapSocialLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecapSocialLink
+        fields = ["id", "title", "url", "order"]
+
+
+class EventRecapSerializer(serializers.ModelSerializer):
+    images = RecapImageSerializer(many=True, read_only=True)
+    videos = RecapVideoSerializer(many=True, read_only=True)
+    social_links = RecapSocialLinkSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = EventRecap
+        fields = ["id", "images", "videos", "social_links", "updated_at"]
+
+
+# ── Exhibition ─────────────────────────────────────────────────────────────
+
 class ExhibitionSerializer(serializers.ModelSerializer):
     images = ExhibitionImageSerializer(many=True, read_only=True)
     map_image = serializers.SerializerMethodField()
+    price_tiers = ExhibitionPriceTierSerializer(many=True, read_only=True)
+    recap = EventRecapSerializer(read_only=True)
 
     class Meta:
         model = Exhibition

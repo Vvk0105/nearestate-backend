@@ -180,3 +180,79 @@ class PropertyImage(models.Model):
         related_name="images"
     )
     image = models.ImageField(upload_to="properties/")
+
+
+# ─────────────────────────────────────────────
+# Event Recap (for past events)
+# ─────────────────────────────────────────────
+
+class EventRecap(models.Model):
+    """One recap per exhibition, created after the event ends."""
+    exhibition = models.OneToOneField(
+        Exhibition, on_delete=models.CASCADE, related_name="recap"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Recap: {self.exhibition.name}"
+
+
+class RecapImage(models.Model):
+    recap = models.ForeignKey(EventRecap, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="recap/images/")
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"Image #{self.order} – {self.recap}"
+
+
+class RecapVideo(models.Model):
+    recap = models.ForeignKey(EventRecap, on_delete=models.CASCADE, related_name="videos")
+    youtube_url = models.URLField(max_length=500)
+    title = models.CharField(max_length=255, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return self.title or self.youtube_url
+
+
+class RecapSocialLink(models.Model):
+    recap = models.ForeignKey(EventRecap, on_delete=models.CASCADE, related_name="social_links")
+    title = models.CharField(max_length=100)   # e.g. "Instagram", "Facebook"
+    url = models.URLField(max_length=500)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"{self.title} – {self.url}"
+
+
+# ─────────────────────────────────────────────
+# Multiple Pricing Tiers (per exhibition)
+# ─────────────────────────────────────────────
+
+class ExhibitionPriceTier(models.Model):
+    """Named pricing tier for an exhibition (e.g. Standard, Premium)."""
+    exhibition = models.ForeignKey(
+        Exhibition, on_delete=models.CASCADE, related_name="price_tiers"
+    )
+    name = models.CharField(max_length=100)          # e.g. "Standard", "Premium"
+    fee = models.PositiveIntegerField()
+    description = models.CharField(max_length=255, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"{self.name} – {self.fee}"
+

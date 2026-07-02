@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView, AdminDashboardStatsView, AdminEventVisitorsView, AdminEventExhibitorsView, AdminToggleVisitorCheckInView, AdminAddExhibitorView, AdminAddVisitorView, AdminCheckExhibitorView
+from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView, AdminDashboardStatsView, AdminEventVisitorsView, AdminEventExhibitorsView, AdminToggleVisitorCheckInView, AdminAddExhibitorView, AdminAddVisitorView, AdminCheckExhibitorView, AdminEventRecapView
 
 urlpatterns = [
     path("exhibitor/profile/", ExhibitorProfileView.as_view()),
@@ -31,4 +31,5 @@ urlpatterns = [
     path("admin/exhibitions/<int:exhibition_id>/add-exhibitor/", AdminAddExhibitorView.as_view()),
     path("admin/exhibitions/<int:exhibition_id>/add-visitor/", AdminAddVisitorView.as_view()),
     path("admin/exhibitions/<int:exhibition_id>/check-exhibitor/", AdminCheckExhibitorView.as_view()),
+    path("admin/exhibitions/<int:exhibition_id>/recap/", AdminEventRecapView.as_view()),
 ]
