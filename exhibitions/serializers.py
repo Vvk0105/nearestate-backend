@@ -3,7 +3,7 @@ from .models import (
     Exhibition, ExhibitionImage, Property, PropertyImage,
     ExhibitorProfile, ExhibitorApplication,
     EventRecap, RecapImage, RecapVideo, RecapSocialLink,
-    ExhibitionPriceTier,
+    ExhibitionPriceTier, ExhibitionSchedule,
 )
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxLengthValidator
@@ -120,12 +120,19 @@ class EventRecapSerializer(serializers.ModelSerializer):
         fields = ["id", "images", "videos", "social_links", "updated_at"]
 
 
+class ExhibitionScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExhibitionSchedule
+        fields = ["id", "date", "start_time", "end_time"]
+
+
 # ── Exhibition ─────────────────────────────────────────────────────────────
 
 class ExhibitionSerializer(serializers.ModelSerializer):
     images = ExhibitionImageSerializer(many=True, read_only=True)
     map_image = serializers.SerializerMethodField()
     price_tiers = ExhibitionPriceTierSerializer(many=True, read_only=True)
+    schedules = ExhibitionScheduleSerializer(many=True, read_only=True)
     recap = EventRecapSerializer(read_only=True)
 
     class Meta:

@@ -123,11 +123,28 @@ class AdminCreateExhibitionView(APIView):
     def post(self, request):
         data = request.data.copy()
 
+        import json
+        schedules_raw = request.data.get("schedules")
+        schedules_list = []
+        if schedules_raw:
+            try:
+                schedules_list = json.loads(schedules_raw) if isinstance(schedules_raw, str) else schedules_raw
+                schedules_list = sorted(schedules_list, key=lambda x: x.get("date", ""))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        if schedules_list:
+            start_date = schedules_list[0]["date"]
+            end_date = schedules_list[-1]["date"]
+        else:
+            start_date = data["start_date"]
+            end_date = data["end_date"]
+
         exhibition = Exhibition.objects.create(
             name=data["name"],
             description=data["description"],
-            start_date=data["start_date"],
-            end_date=data["end_date"],
+            start_date=start_date,
+            end_date=end_date,
             venue=data["venue"],
             venue_link=data.get("venue_link") or None,
             location_link=data.get("location_link") or None,
@@ -141,6 +158,15 @@ class AdminCreateExhibitionView(APIView):
             payment_details=data.get("payment_details"),
             map_image=data.get("map_image"),
         )
+
+        if schedules_list:
+            for sched in schedules_list:
+                ExhibitionSchedule.objects.create(
+                    exhibition=exhibition,
+                    date=sched["date"],
+                    start_time=sched["start_time"],
+                    end_time=sched["end_time"],
+                )
 
         for img in request.FILES.getlist("images"):
             image_obj = ExhibitionImage.objects.create(
@@ -361,6 +387,32 @@ class AdminUpdateExhibitionView(APIView):
                         order=i,
                     )
             except (json.JSONDecodeError, TypeError):
+                pass
+
+        # ── Schedules (replace all on update) ──
+        schedules_raw = request.data.get("schedules")
+        if schedules_raw is not None:
+            try:
+                schedules_list = json.loads(schedules_raw) if isinstance(schedules_raw, str) else schedules_raw
+                schedules_list = sorted(schedules_list, key=lambda x: x.get("date", ""))
+                
+                # Delete existing schedules
+                ExhibitionSchedule.objects.filter(exhibition=exhibition).delete()
+                
+                # Create new schedules
+                for sched in schedules_list:
+                    ExhibitionSchedule.objects.create(
+                        exhibition=exhibition,
+                        date=sched["date"],
+                        start_time=sched["start_time"],
+                        end_time=sched["end_time"],
+                    )
+                
+                # Update exhibition start_date & end_date based on updated schedules
+                if schedules_list:
+                    exhibition.start_date = schedules_list[0]["date"]
+                    exhibition.end_date = schedules_list[-1]["date"]
+            except (json.JSONDecodeError, TypeError, KeyError):
                 pass
 
         exhibition.save()

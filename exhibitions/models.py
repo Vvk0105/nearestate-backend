@@ -97,6 +97,20 @@ class ExhibitionImage(models.Model):
     )
     image = models.ImageField(upload_to="exhibitions/images/")
 
+class ExhibitionSchedule(models.Model):
+    exhibition = models.ForeignKey(
+        Exhibition, on_delete=models.CASCADE, related_name="schedules"
+    )
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        ordering = ["date"]
+
+    def __str__(self):
+        return f"{self.exhibition.name} - {self.date}: {self.start_time} to {self.end_time}"
+
 class ExhibitorApplication(models.Model):
     STATUS_CHOICES = (
         ("PENDING", "Pending"),

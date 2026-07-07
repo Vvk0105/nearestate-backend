@@ -90,9 +90,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
 # if os.name == 'nt' or os.getenv("USE_SQLITE") == "True":
 #     DATABASES = {
 #         "default": {
