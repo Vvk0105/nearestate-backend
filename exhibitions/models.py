@@ -121,7 +121,7 @@ class ExhibitorApplication(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     exhibition = models.ForeignKey("Exhibition", on_delete=models.CASCADE)
 
-    payment_screenshot = models.ImageField(
+    payment_screenshot = models.FileField(
         upload_to="payments/screenshots/",
         blank=True,
         null=True,

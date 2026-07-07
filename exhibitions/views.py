@@ -159,7 +159,7 @@ class AdminCreateExhibitionView(APIView):
             visitor_capacity=data["visitor_capacity"],
             registration_fee=data.get("registration_fee"),
             currency_symbol=data.get("currency_symbol", "₹"),
-            payment_details=data.get("payment_details"),
+            payment_details=data.get("payment_details") or "To confirm your exhibitor booking, please make payment to the following account:\nAccount Name: Delivery Around Pty Ltd\nBank: Commonwealth Bank, Australia\nBSB: 063-464\nAccount Number: 11095751\nPlease use your company name as the payment reference, upload the screen shot in this page. (Optional: email the payment confirmation to accounts@NearEstate.com, once the transfer has been completed).",
             map_image=data.get("map_image"),
         )
 
@@ -338,6 +338,8 @@ class AdminUpdateExhibitionView(APIView):
                 elif field in ("venue_link", "location_link"):
                     # Store empty strings as None so the field is truly cleared
                     setattr(exhibition, field, value.strip() or None)
+                elif field == "payment_details" and (not value or not value.strip()):
+                    setattr(exhibition, field, "To confirm your exhibitor booking, please make payment to the following account:\nAccount Name: Delivery Around Pty Ltd\nBank: Commonwealth Bank, Australia\nBSB: 063-464\nAccount Number: 11095751\nPlease use your company name as the payment reference, upload the screen shot in this page. (Optional: email the payment confirmation to accounts@NearEstate.com, once the transfer has been completed).")
                 else:
                     setattr(exhibition, field, value)
 
@@ -1033,9 +1035,13 @@ class AdminEventVisitorsView(APIView):
         if download:
             import csv
             from django.http import HttpResponse
+            import re
+            
+            exhibition = Exhibition.objects.get(id=exhibition_id)
+            safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', exhibition.name)
             
             response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename="visitors-event-{exhibition_id}.csv"'
+            response['Content-Disposition'] = f'attachment; filename="visitors-{safe_name}.csv"'
             
             writer = csv.writer(response)
             writer.writerow(['ID', 'Visitor Name', 'Email', 'Registered At', 'Checked In', 'QR Code'])
@@ -1100,9 +1106,13 @@ class AdminEventExhibitorsView(APIView):
         if download:
             import csv
             from django.http import HttpResponse
+            import re
+            
+            exhibition = Exhibition.objects.get(id=exhibition_id)
+            safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', exhibition.name)
             
             response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename="exhibitors-event-{exhibition_id}.csv"'
+            response['Content-Disposition'] = f'attachment; filename="exhibitors-{safe_name}.csv"'
             
             writer = csv.writer(response)
             writer.writerow(['ID', 'Company Name', 'Email', 'Booth Number', 'Contact Number', 'Business Type', 'Council Area'])

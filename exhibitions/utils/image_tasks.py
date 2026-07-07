@@ -19,7 +19,16 @@ def compress_model_image(self, app_label, model_name, object_id, field_name):
     if not image_field:
         return
 
-    img = Image.open(image_field)
+    filename = os.path.basename(image_field.name)
+    ext = os.path.splitext(filename)[1].lower()
+    if ext == ".pdf":
+        return
+
+    try:
+        img = Image.open(image_field)
+    except Exception:
+        # Fallback in case of other non-image formats that aren't .pdf extension
+        return
     img = img.convert("RGB")
     img.thumbnail((1600, 1600))
 
