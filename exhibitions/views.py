@@ -22,6 +22,9 @@ from accounts.models import User
 from exhibitions.utils.image_tasks import compress_model_image
 from django.utils import timezone
 from django.db.models import Case, When, Value, IntegerField, Q
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ExhibitorProfileView(APIView):
@@ -130,8 +133,8 @@ class AdminCreateExhibitionView(APIView):
             try:
                 schedules_list = json.loads(schedules_raw) if isinstance(schedules_raw, str) else schedules_raw
                 schedules_list = sorted(schedules_list, key=lambda x: x.get("date", ""))
-            except (json.JSONDecodeError, TypeError):
-                pass
+            except Exception as e:
+                logger.exception("Failed to parse schedules raw data")
 
         if schedules_list:
             start_date = schedules_list[0]["date"]
@@ -160,13 +163,16 @@ class AdminCreateExhibitionView(APIView):
         )
 
         if schedules_list:
-            for sched in schedules_list:
-                ExhibitionSchedule.objects.create(
-                    exhibition=exhibition,
-                    date=sched["date"],
-                    start_time=sched["start_time"],
-                    end_time=sched["end_time"],
-                )
+            try:
+                for sched in schedules_list:
+                    ExhibitionSchedule.objects.create(
+                        exhibition=exhibition,
+                        date=sched["date"],
+                        start_time=sched["start_time"],
+                        end_time=sched["end_time"],
+                    )
+            except Exception as e:
+                logger.exception("Failed to save schedules for new exhibition %s", exhibition.id)
 
         for img in request.FILES.getlist("images"):
             image_obj = ExhibitionImage.objects.create(
@@ -412,8 +418,8 @@ class AdminUpdateExhibitionView(APIView):
                 if schedules_list:
                     exhibition.start_date = schedules_list[0]["date"]
                     exhibition.end_date = schedules_list[-1]["date"]
-            except (json.JSONDecodeError, TypeError, KeyError):
-                pass
+            except Exception as e:
+                logger.exception("Failed to update schedules for exhibition %s", exhibition.id)
 
         exhibition.save()
 
