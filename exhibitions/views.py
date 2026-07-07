@@ -6,6 +6,7 @@ from .models import (
     ExhibitorProfile, Exhibition, ExhibitionImage, ExhibitorApplication,
     VisitorRegistration, Property, PropertyImage,
     EventRecap, RecapImage, RecapVideo, RecapSocialLink, ExhibitionPriceTier,
+    ExhibitionSchedule,
 )
 from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.permissions import IsAdminUserRole, IsExhibitorWithProfile
