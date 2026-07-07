@@ -1020,6 +1020,7 @@ class AdminEventVisitorsView(APIView):
         query = request.query_params.get('search', '')
         page = int(request.query_params.get('page', 1))
         page_size = int(request.query_params.get('limit', 10))
+        download = request.query_params.get('download', '').lower() == 'true'
 
         regs = VisitorRegistration.objects.filter(exhibition_id=exhibition_id).select_related('user')
 
@@ -1028,6 +1029,28 @@ class AdminEventVisitorsView(APIView):
                 Q(user__username__icontains=query) |
                 Q(user__email__icontains=query)
             )
+
+        if download:
+            import csv
+            from django.http import HttpResponse
+            
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="visitors-event-{exhibition_id}.csv"'
+            
+            writer = csv.writer(response)
+            writer.writerow(['ID', 'Visitor Name', 'Email', 'Registered At', 'Checked In', 'QR Code'])
+            
+            for r in regs:
+                reg_at = r.registered_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(r, 'registered_at') and r.registered_at else 'N/A'
+                writer.writerow([
+                    r.id,
+                    r.user.username,
+                    r.user.email,
+                    reg_at,
+                    'Yes' if r.is_checked_in else 'No',
+                    str(r.qr_code)
+                ])
+            return response
 
         total = regs.count()
         start = (page - 1) * page_size
@@ -1060,6 +1083,7 @@ class AdminEventExhibitorsView(APIView):
         query = request.query_params.get('search', '')
         page = int(request.query_params.get('page', 1))
         page_size = int(request.query_params.get('limit', 10))
+        download = request.query_params.get('download', '').lower() == 'true'
 
         apps = ExhibitorApplication.objects.filter(
             exhibition_id=exhibition_id, 
@@ -1072,6 +1096,29 @@ class AdminEventExhibitorsView(APIView):
                 Q(user__email__icontains=query) |
                 Q(user__exhibitorprofile__company_name__icontains=query)
             )
+
+        if download:
+            import csv
+            from django.http import HttpResponse
+            
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="exhibitors-event-{exhibition_id}.csv"'
+            
+            writer = csv.writer(response)
+            writer.writerow(['ID', 'Company Name', 'Email', 'Booth Number', 'Contact Number', 'Business Type', 'Council Area'])
+            
+            for app in apps:
+                profile = getattr(app.user, 'exhibitorprofile', None)
+                writer.writerow([
+                    app.id,
+                    profile.company_name if profile else app.user.username,
+                    app.user.email,
+                    app.booth_number or 'N/A',
+                    profile.contact_number if profile else 'N/A',
+                    profile.business_type if profile else 'N/A',
+                    profile.council_area if profile else 'N/A'
+                ])
+            return response
 
         total = apps.count()
         start = (page - 1) * page_size
@@ -1087,7 +1134,6 @@ class AdminEventExhibitorsView(APIView):
                 "email": app.user.email,
                 "booth_number": app.booth_number,
                 "badge": app.badge.url if app.badge else None,
-                # Additional details for "Eye" icon if needed, though they can be fetched individually or here
                 "contact_number": profile.contact_number if profile else None,
                 "business_type": profile.business_type if profile else None,
                 "council_area": profile.council_area if profile else None
