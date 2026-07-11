@@ -22,7 +22,7 @@ from exhibitions.utils.tasks import send_event_email, send_exhibitor_approval_em
 from accounts.models import User
 from exhibitions.utils.image_tasks import compress_model_image
 from django.utils import timezone
-from django.db.models import Case, When, Value, IntegerField, Q
+from django.db.models import Case, When, Value, IntegerField, Q, Prefetch
 import logging
 
 logger = logging.getLogger(__name__)
@@ -236,7 +236,10 @@ class AdminListExhibitionsView(APIView):
         page = int(request.query_params.get('page', 1))
         page_size = int(request.query_params.get('limit', 10))
 
-        exhibitions = Exhibition.objects.all()
+        exhibitions = Exhibition.objects.all().prefetch_related(
+            'images', 'price_tiers', 'schedules',
+            'recap', 'recap__images', 'recap__videos', 'recap__social_links',
+        )
 
         if query:
             exhibitions = exhibitions.filter(
@@ -635,7 +638,10 @@ class PublicExhibitionListView(APIView):
         today = timezone.localdate()
 
         # Build base active exhibitions query
-        base_query = Exhibition.objects.prefetch_related('images').filter(is_active=True)
+        base_query = Exhibition.objects.prefetch_related(
+            'images', 'price_tiers', 'schedules',
+            'recap', 'recap__images', 'recap__videos', 'recap__social_links',
+        ).filter(is_active=True)
 
         if query:
             base_query = base_query.filter(
@@ -704,7 +710,7 @@ class ExhibitorApplicationStatusView(APIView):
         if user.active_role != "EXHIBITOR" and user.active_role != "ADMIN":
             return Response([], status=200)
 
-        apps = ExhibitorApplication.objects.filter(user=user)
+        apps = ExhibitorApplication.objects.filter(user=user).select_related("exhibition")
 
         data = []
         for app in apps:
@@ -786,7 +792,7 @@ class VisitorQRListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        regs = VisitorRegistration.objects.filter(user=request.user)
+        regs = VisitorRegistration.objects.filter(user=request.user).select_related("exhibition")
 
         data = []
         for r in regs:
@@ -806,7 +812,7 @@ class AdminQRScanView(APIView):
         qr = request.data.get("qr_code")
 
         try:
-            reg = VisitorRegistration.objects.get(qr_code=qr)
+            reg = VisitorRegistration.objects.select_related("user", "exhibition").get(qr_code=qr)
         except VisitorRegistration.DoesNotExist:
             return Response(
                 {"error": "Invalid QR"},
@@ -880,7 +886,7 @@ class ExhibitorMyPropertiesView(APIView):
     permission_classes = [IsExhibitorWithProfile]
 
     def get(self, request):
-        props = Property.objects.filter(exhibitor=request.user).order_by("-created_at")
+        props = Property.objects.filter(exhibitor=request.user).prefetch_related("images").order_by("-created_at")
         return Response(PropertySerializer(props, many=True, context={'request': request}).data)
 
 class ExhibitorDeletePropertyView(APIView):
@@ -940,7 +946,7 @@ class PublicExhibitionPropertiesView(APIView):
     permission_classes = []
 
     def get(self, request, exhibitor_id):
-        props = Property.objects.filter(exhibitor_id=exhibitor_id).order_by("-created_at")
+        props = Property.objects.filter(exhibitor_id=exhibitor_id).prefetch_related("images").order_by("-created_at")
         return Response(PropertySerializer(props, many=True, context={'request': request}).data)
 
 class PublicExhibitionDetailView(APIView):
