@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView, AdminDashboardStatsView, AdminEventVisitorsView, AdminEventExhibitorsView, AdminToggleVisitorCheckInView, AdminAddExhibitorView, AdminAddVisitorView, AdminCheckExhibitorView, AdminEventRecapView, AdminUpdateExhibitorInEventView, AdminDeleteExhibitorInEventView
+from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView, AdminDashboardStatsView, AdminEventVisitorsView, AdminEventExhibitorsView, AdminToggleVisitorCheckInView, AdminAddExhibitorView, AdminAddVisitorView, AdminCheckExhibitorView, AdminEventRecapView, AdminUpdateExhibitorInEventView, AdminDeleteExhibitorInEventView, AdminUpdateVisitorInEventView, AdminDeleteVisitorInEventView
 
 urlpatterns = [
     path("exhibitor/profile/", ExhibitorProfileView.as_view()),
@@ -34,4 +34,6 @@ urlpatterns = [
     path("admin/exhibitions/<int:exhibition_id>/recap/", AdminEventRecapView.as_view()),
     path("admin/exhibitions/<int:exhibition_id>/exhibitors/<int:application_id>/update/", AdminUpdateExhibitorInEventView.as_view()),
     path("admin/exhibitions/<int:exhibition_id>/exhibitors/<int:application_id>/delete/", AdminDeleteExhibitorInEventView.as_view()),
+    path("admin/exhibitions/<int:exhibition_id>/visitors/<int:registration_id>/update/", AdminUpdateVisitorInEventView.as_view()),
+    path("admin/exhibitions/<int:exhibition_id>/visitors/<int:registration_id>/delete/", AdminDeleteVisitorInEventView.as_view()),
 ]

@@ -1590,3 +1590,72 @@ class AdminDeleteExhibitorInEventView(APIView):
         app.delete()
 
         return Response({'message': 'Exhibitor removed from event successfully'}, status=status.HTTP_200_OK)
+
+
+class AdminUpdateVisitorInEventView(APIView):
+    """
+    Admin endpoint to update visitor details for a specific event.
+    PATCH /exhibitions/admin/exhibitions/<exhibition_id>/visitors/<registration_id>/update/
+    Accepts: name (username), is_checked_in
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def patch(self, request, exhibition_id, registration_id):
+        reg = get_object_or_404(
+            VisitorRegistration,
+            id=registration_id,
+            exhibition_id=exhibition_id
+        )
+
+        # Update visitor name (stored as username on User model)
+        name = request.data.get('name')
+        if name:
+            reg.user.username = name
+            reg.user.save(update_fields=['username'])
+
+        # Allow manually overriding check-in status
+        is_checked_in = request.data.get('is_checked_in')
+        if is_checked_in is not None:
+            reg.is_checked_in = str(is_checked_in).lower() in ('true', '1', 'yes')
+            reg.save(update_fields=['is_checked_in'])
+
+        return Response({
+            "id": reg.id,
+            "name": reg.user.username,
+            "email": reg.user.email,
+            "is_checked_in": reg.is_checked_in,
+            "qr_code": str(reg.qr_code),
+            "registered_at": reg.registered_at,
+        })
+
+
+class AdminDeleteVisitorInEventView(APIView):
+    """
+    Admin endpoint to remove a visitor registration from a specific event.
+    DELETE /exhibitions/admin/exhibitions/<exhibition_id>/visitors/<registration_id>/delete/
+    Restores available_visitors count on the exhibition.
+    Does NOT delete the user account.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def delete(self, request, exhibition_id, registration_id):
+        reg = get_object_or_404(
+            VisitorRegistration,
+            id=registration_id,
+            exhibition_id=exhibition_id
+        )
+
+        try:
+            exhibition = Exhibition.objects.get(id=exhibition_id)
+        except Exhibition.DoesNotExist:
+            return Response({'error': 'Exhibition not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Restore visitor capacity slot
+        exhibition.available_visitors += 1
+        exhibition.save()
+
+        reg.delete()
+
+        return Response({'message': 'Visitor removed from event successfully'}, status=status.HTTP_200_OK)
