@@ -1005,17 +1005,83 @@ class AdminDashboardStatsView(APIView):
     permission_classes = [IsAdminUserRole]
 
     def get(self, request):
+        from django.db.models import Count
+        from django.utils import timezone
+        from datetime import timedelta
+        import calendar
+
         total_events = Exhibition.objects.count()
         active_events = Exhibition.objects.filter(is_active=True).count()
 
         unique_visitors = VisitorRegistration.objects.values('user').distinct().count()
         unique_exhibitors = ExhibitorApplication.objects.filter(status='APPROVED').values('user').distinct().count()
 
+        total_registrations = VisitorRegistration.objects.count()
+        checked_in = VisitorRegistration.objects.filter(is_checked_in=True).count()
+        checkin_rate = round((checked_in / total_registrations * 100), 1) if total_registrations > 0 else 0
+
+        # Per-event breakdown (top 10 by visitor count)
+        events_breakdown = []
+        events = Exhibition.objects.all().order_by('-created_at')[:10]
+        for ev in events:
+            v_count = VisitorRegistration.objects.filter(exhibition=ev).count()
+            e_count = ExhibitorApplication.objects.filter(exhibition=ev, status='APPROVED').count()
+            ci_count = VisitorRegistration.objects.filter(exhibition=ev, is_checked_in=True).count()
+            events_breakdown.append({
+                'id': ev.id,
+                'name': ev.name,
+                'visitor_count': v_count,
+                'exhibitor_count': e_count,
+                'checked_in_count': ci_count,
+                'is_active': ev.is_active,
+            })
+
+        # Business type distribution
+        btype_qs = (
+            ExhibitorApplication.objects
+            .filter(status='APPROVED')
+            .select_related('user__exhibitorprofile')
+        )
+        btype_counts = {}
+        for app in btype_qs:
+            profile = getattr(app.user, 'exhibitorprofile', None)
+            bt = profile.business_type if profile else 'OTHER_BUSINESSES'
+            btype_counts[bt] = btype_counts.get(bt, 0) + 1
+        business_type_distribution = [
+            {'type': k, 'count': v}
+            for k, v in sorted(btype_counts.items(), key=lambda x: -x[1])
+        ]
+
+        # Monthly visitor registrations (last 6 months)
+        today = timezone.now()
+        monthly_registrations = []
+        for i in range(5, -1, -1):
+            # Calculate year/month for i months ago
+            month = today.month - i
+            year = today.year
+            while month <= 0:
+                month += 12
+                year -= 1
+            month_name = calendar.month_abbr[month]
+            count = VisitorRegistration.objects.filter(
+                registered_at__year=year,
+                registered_at__month=month
+            ).count()
+            monthly_registrations.append({
+                'month': f"{month_name} {year}",
+                'count': count,
+            })
+
         return Response({
             "total_events": total_events,
             "active_events": active_events,
             "total_visitors": unique_visitors,
-            "total_exhibitors": unique_exhibitors
+            "total_exhibitors": unique_exhibitors,
+            "checkin_rate": checkin_rate,
+            "total_checked_in": checked_in,
+            "events_breakdown": events_breakdown,
+            "business_type_distribution": business_type_distribution,
+            "monthly_registrations": monthly_registrations,
         })
 
 from django.db.models import Q
@@ -1441,3 +1507,86 @@ class AdminAddVisitorView(APIView):
             "qr_code": str(registration.qr_code),
         }, status=status.HTTP_201_CREATED)
 
+
+class AdminUpdateExhibitorInEventView(APIView):
+    """
+    Admin endpoint to update exhibitor details for a specific event.
+    PATCH /exhibitions/admin/exhibitions/<exhibition_id>/exhibitors/<application_id>/update/
+    Accepts: booth_number, company_name, contact_number, business_type, council_area
+    Also handles optional badge file upload.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def patch(self, request, exhibition_id, application_id):
+        app = get_object_or_404(
+            ExhibitorApplication,
+            id=application_id,
+            exhibition_id=exhibition_id,
+            status='APPROVED'
+        )
+
+        # Update booth number on application
+        booth_number = request.data.get('booth_number')
+        if booth_number is not None:
+            app.booth_number = booth_number
+
+        # Update badge if provided
+        badge_file = request.FILES.get('badge')
+        if badge_file:
+            app.badge = badge_file
+
+        app.save()
+
+        # Update ExhibitorProfile fields
+        profile = getattr(app.user, 'exhibitorprofile', None)
+        if profile:
+            for field in ['company_name', 'contact_number', 'business_type', 'council_area']:
+                val = request.data.get(field)
+                if val:
+                    setattr(profile, field, val)
+            profile.save()
+
+        return Response({
+            "id": app.id,
+            "booth_number": app.booth_number,
+            "email": app.user.email,
+            "company_name": profile.company_name if profile else app.user.username,
+            "contact_number": profile.contact_number if profile else None,
+            "business_type": profile.business_type if profile else None,
+            "council_area": profile.council_area if profile else None,
+            "badge": app.badge.url if app.badge else None,
+        })
+
+
+class AdminDeleteExhibitorInEventView(APIView):
+    """
+    Admin endpoint to remove an exhibitor from a specific event.
+    DELETE /exhibitions/admin/exhibitions/<exhibition_id>/exhibitors/<application_id>/delete/
+    Restores available_booths count on the exhibition.
+    Does NOT delete the user account or ExhibitorProfile.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def delete(self, request, exhibition_id, application_id):
+        app = get_object_or_404(
+            ExhibitorApplication,
+            id=application_id,
+            exhibition_id=exhibition_id
+        )
+
+        try:
+            exhibition = Exhibition.objects.get(id=exhibition_id)
+        except Exhibition.DoesNotExist:
+            return Response({'error': 'Exhibition not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Restore booth count only if the application was approved
+        if app.status == 'APPROVED':
+            exhibition.available_booths += 1
+            exhibition.save()
+
+        app.delete()
+
+        return Response({'message': 'Exhibitor removed from event successfully'}, status=status.HTTP_200_OK)
