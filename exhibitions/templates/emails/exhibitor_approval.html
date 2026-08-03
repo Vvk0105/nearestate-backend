@@ -63,63 +63,7 @@
             margin: 10px 0;
         }
 
-        .footer {
-            background-color: #f4f4f4;
-            padding: 20px;
-            text-align: center;
-            color: #666666;
-            font-size: 14px;
-        }
-
-        .footer a {
-            color: #1a1a2e;
-            text-decoration: none;
-        }
-
-        /* ── Social & App Footer ── */
-        .social-footer {
-            background: #1e293b;
-            padding: 32px 24px 24px;
-            text-align: center;
-            font-family: Arial, sans-serif;
-        }
-        .social-footer .section-title {
-            color: #94a3b8;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            text-transform: uppercase;
-            margin: 0 0 14px;
-        }
-        .social-icons { display: inline-block; margin-bottom: 24px; }
-        .social-icon-link { display: inline-block; margin: 0 8px; text-decoration: none; }
-        .social-icon-circle {
-            display: inline-block;
-            width: 42px; height: 42px;
-            border-radius: 50%;
-            text-align: center; line-height: 42px;
-            vertical-align: middle;
-        }
-        .fb-circle   { background: #1877F2; }
-        .ig-circle   { background: linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); }
-        .li-circle   { background: #0A66C2; }
-        .app-badges  { margin-bottom: 20px; }
-        .app-badge-link {
-            display: inline-block; margin: 4px 6px;
-            text-decoration: none;
-            background: #0f172a; border: 1px solid #334155;
-            border-radius: 8px; padding: 8px 16px;
-            color: #f8fafc; font-size: 13px; font-weight: 600;
-            vertical-align: middle;
-        }
-        .app-badge-link .badge-sub {
-            display: block; font-size: 10px; font-weight: 400;
-            color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px;
-        }
-        .footer-contact { color: #64748b; font-size: 12px; line-height: 1.7; margin-bottom: 12px; }
-        .footer-contact a { color: #60a5fa; text-decoration: none; }
-        .footer-divider { border: none; border-top: 1px solid #334155; margin: 16px auto; width: 80%; }
-        .footer-copy { color: #475569; font-size: 11px; }
+        /* (social footer uses fully inline styles below) */
     </style>
 </head>
 
@@ -149,56 +93,42 @@
         </div>
 
         <!-- ══════════════ SOCIAL & APP FOOTER ══════════════ -->
-        <div class="social-footer">
+        <div style="background:#f7f7f7;padding:32px 24px 28px;text-align:center;font-family:Arial,sans-serif;border-top:1px solid #e8e8e8;">
 
             <!-- Follow us on -->
-            <p class="section-title">Follow us on</p>
-            <div class="social-icons">
-                <a href="https://www.facebook.com/NearEstatecom" class="social-icon-link" title="Follow NearEstate on Facebook" target="_blank">
-                    <span class="social-icon-circle fb-circle">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="#fff" style="vertical-align:middle;margin-top:-1px;">
-                            <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3l-.5 3H13v6.8c4.56-.93 8-4.96 8-9.8z"/>
-                        </svg>
-                    </span>
+            <p style="color:#888888;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 16px;">Follow us on</p>
+            <div style="margin-bottom:28px;">
+                <a href="https://www.facebook.com/NearEstatecom" style="display:inline-block;margin:0 6px;text-decoration:none;" title="Follow NearEstate on Facebook" target="_blank">
+                    <img src="https://img.icons8.com/color/48/facebook-new.png" width="44" height="44" alt="Facebook" style="display:inline-block;border:0;" />
                 </a>
-                <a href="https://www.instagram.com/nearestate/" class="social-icon-link" title="Follow NearEstate on Instagram" target="_blank">
-                    <span class="social-icon-circle ig-circle">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="#fff" style="vertical-align:middle;margin-top:-1px;">
-                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.336 3.608 1.311.975.975 1.249 2.242 1.311 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.336 2.633-1.311 3.608-.975.975-2.242 1.249-3.608 1.311-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.336-3.608-1.311-.975-.975-1.249-2.242-1.311-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.336-2.633 1.311-3.608.975-.975 2.242-1.249 3.608-1.311C8.416 2.175 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.332.014 7.052.072 5.197.157 3.355.673 2.014 2.014.673 3.355.157 5.197.072 7.052.014 8.332 0 8.741 0 12c0 3.259.014 3.668.072 4.948.085 1.855.601 3.697 1.942 5.038 1.341 1.341 3.183 1.857 5.038 1.942C8.332 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 1.855-.085 3.697-.601 5.038-1.942 1.341-1.341 1.857-3.183 1.942-5.038.058-1.28.072-1.689.072-4.948 0-3.259-.014-3.668-.072-4.948-.085-1.855-.601-3.697-1.942-5.038C20.645.673 18.803.157 16.948.072 15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-                        </svg>
-                    </span>
+                <a href="https://www.instagram.com/nearestate/" style="display:inline-block;margin:0 6px;text-decoration:none;" title="Follow NearEstate on Instagram" target="_blank">
+                    <img src="https://img.icons8.com/color/48/instagram-new.png" width="44" height="44" alt="Instagram" style="display:inline-block;border:0;" />
                 </a>
-                <a href="https://www.linkedin.com/company/nearestate-com/" class="social-icon-link" title="Follow NearEstate.com on LinkedIn" target="_blank">
-                    <span class="social-icon-circle li-circle">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="#fff" style="vertical-align:middle;margin-top:-1px;">
-                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                        </svg>
-                    </span>
+                <a href="https://www.linkedin.com/company/nearestate-com/" style="display:inline-block;margin:0 6px;text-decoration:none;" title="Follow NearEstate.com on LinkedIn" target="_blank">
+                    <img src="https://img.icons8.com/color/48/linkedin.png" width="44" height="44" alt="LinkedIn" style="display:inline-block;border:0;" />
                 </a>
             </div>
 
             <!-- Download Apps -->
-            <p class="section-title">Download Our App</p>
-            <div class="app-badges">
-                <a href="https://play.google.com/store/apps/details?id=com.nearestate.events" class="app-badge-link" title="Get NearEstate on Google Play" target="_blank">
-                    <span class="badge-sub">Get it on</span>
-                    ▶ Google Play
+            <p style="color:#888888;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 16px;">Download Our App</p>
+            <div style="margin-bottom:24px;">
+                <a href="https://play.google.com/store/apps/details?id=com.nearestate.events" style="display:inline-block;margin:4px 8px;text-decoration:none;" title="Get NearEstate on Google Play" target="_blank">
+                    <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="52" alt="Get it on Google Play" style="display:inline-block;border:0;" />
                 </a>
-                <a href="https://apps.apple.com/au/app/near-estate/id6760655554" class="app-badge-link" title="Download Near Estate on the App Store" target="_blank">
-                    <span class="badge-sub">Download on the</span>
-                     App Store
+                <a href="https://apps.apple.com/au/app/near-estate/id6760655554" style="display:inline-block;margin:4px 8px;text-decoration:none;" title="Download Near Estate on the App Store" target="_blank">
+                    <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83" height="52" alt="Download on the App Store" style="display:inline-block;border:0;" />
                 </a>
             </div>
 
-            <hr class="footer-divider" />
+            <hr style="border:none;border-top:1px solid #e0e0e0;margin:16px auto;width:80%;" />
 
             <!-- Contact & Address -->
-            <p class="footer-contact">
-                Need assistance? Contact <a href="mailto:info@nearestate.com">info@nearestate.com</a> or call <a href="tel:+61426535177">+61 426 535 177</a>.<br />
-                <a href="https://nearestate.com/" style="color:#60a5fa;font-weight:600;">NearEstate.com</a> &nbsp;|&nbsp; Pakenham, Victoria 3810, Australia
+            <p style="color:#666666;font-size:12px;line-height:1.8;margin:0 0 8px;">
+                Need assistance? Contact <a href="mailto:info@nearestate.com" style="color:#1d4ed8;text-decoration:none;">info@nearestate.com</a> or call <a href="tel:+61426535177" style="color:#1d4ed8;text-decoration:none;">+61 426 535 177</a>.<br />
+                <a href="https://nearestate.com/" style="color:#1d4ed8;font-weight:700;text-decoration:none;">NearEstate.com</a> &nbsp;|&nbsp; Pakenham, Victoria 3810, Australia
             </p>
 
-            <p class="footer-copy">© NearEstate — This is an automated message, please do not reply.</p>
+            <p style="color:#aaaaaa;font-size:11px;margin:8px 0 0;">&#169; NearEstate &#8212; This is an automated message, please do not reply.</p>
 
         </div>
         <!-- ══════════════ END FOOTER ══════════════ -->
