@@ -29,11 +29,11 @@ SOCIAL_FOOTER_HTML = """
   <p style="color:#888888;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 14px;">Download Our App</p>
   <!--[if mso]><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center"><tr><td style="padding:0 6px;"><![endif]-->
   <a href="https://apps.apple.com/au/app/near-estate/id6760655554" style="display:inline-block;margin:0 6px;text-decoration:none;vertical-align:middle;" title="Download Near Estate on the App Store" target="_blank">
-    <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83" width="120" height="40" alt="Download on the App Store" style="display:block;border:0;width:120px;height:40px;" />
+    <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=500x166" width="120" height="40" alt="Download on the App Store" style="display:block;border:0;width:120px;height:40px;" />
   </a>
   <!--[if mso]></td><td style="padding:0 6px;"><![endif]-->
   <a href="https://play.google.com/store/apps/details?id=com.nearestate.events" style="display:inline-block;margin:0 6px;text-decoration:none;vertical-align:middle;" title="Get NearEstate on Google Play" target="_blank">
-    <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" width="135" height="40" alt="Get it on Google Play" style="display:block;border:0;width:135px;height:40px;" />
+    <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" width="103" height="40" alt="Get it on Google Play" style="display:block;border:0;width:103px;height:40px;" />
   </a>
   <!--[if mso]></td></tr></table><![endif]-->
 </div>
