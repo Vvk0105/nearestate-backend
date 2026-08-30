@@ -170,7 +170,6 @@ class AdminCreateExhibitionView(APIView):
             registration_fee=data.get("registration_fee"),
             currency_symbol=data.get("currency_symbol", "₹"),
             currency_code=data.get("currency_code", "INR"),
-            payment_details=data.get("payment_details") or "To confirm your exhibitor booking, please make payment to the following account:\nAccount Name: Delivery Around Pty Ltd\nBank: Commonwealth Bank, Australia\nBSB: 063-464\nAccount Number: 11095751\nPlease use your company name as the payment reference, upload the screen shot in this page. (Optional: email the payment confirmation to accounts@NearEstate.com, once the transfer has been completed).",
             map_image=data.get("map_image"),
         )
 
@@ -331,7 +330,7 @@ class AdminUpdateExhibitionView(APIView):
             "name", "description", "start_date", "end_date",
             "venue", "city", "state", "country", "is_active",
             "booth_capacity", "visitor_capacity", "registration_fee",
-            "currency_symbol", "currency_code", "payment_details", "venue_link", "location_link"
+            "currency_symbol", "currency_code", "venue_link", "location_link"
         ]:
             if field in request.data:
                 value = request.data[field]
@@ -360,8 +359,6 @@ class AdminUpdateExhibitionView(APIView):
                 elif field in ("venue_link", "location_link"):
                     # Store empty strings as None so the field is truly cleared
                     setattr(exhibition, field, value.strip() or None)
-                elif field == "payment_details" and (not value or not value.strip()):
-                    setattr(exhibition, field, "To confirm your exhibitor booking, please make payment to the following account:\nAccount Name: Delivery Around Pty Ltd\nBank: Commonwealth Bank, Australia\nBSB: 063-464\nAccount Number: 11095751\nPlease use your company name as the payment reference, upload the screen shot in this page. (Optional: email the payment confirmation to accounts@NearEstate.com, once the transfer has been completed).")
                 else:
                     setattr(exhibition, field, value)
 
