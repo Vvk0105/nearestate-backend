@@ -1811,7 +1811,7 @@ class AdminUpdateExhibitorInEventView(APIView):
     """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAdminUserRole]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def patch(self, request, exhibition_id, application_id):
         app = get_object_or_404(
