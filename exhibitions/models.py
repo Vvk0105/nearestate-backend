@@ -71,7 +71,7 @@ class Exhibition(models.Model):
 
     map_image = models.ImageField(upload_to="exhibitions/maps/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
 
     registration_fee = models.PositiveIntegerField(blank=True, null=True)
     currency_symbol = models.CharField(max_length=10, default='₹')

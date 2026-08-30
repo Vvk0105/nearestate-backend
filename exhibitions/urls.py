@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView, AdminDashboardStatsView, AdminEventVisitorsView, AdminEventExhibitorsView, AdminToggleVisitorCheckInView, AdminAddExhibitorView, AdminAddVisitorView, AdminCheckExhibitorView, AdminEventRecapView, AdminUpdateExhibitorInEventView, AdminDeleteExhibitorInEventView, AdminUpdateVisitorInEventView, AdminDeleteVisitorInEventView
+from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, AdminToggleExhibitionStatusView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView, AdminDashboardStatsView, AdminEventVisitorsView, AdminEventExhibitorsView, AdminToggleVisitorCheckInView, AdminAddExhibitorView, AdminAddVisitorView, AdminCheckExhibitorView, AdminEventRecapView, AdminUpdateExhibitorInEventView, AdminDeleteExhibitorInEventView, AdminUpdateVisitorInEventView, AdminDeleteVisitorInEventView
 
 urlpatterns = [
     path("exhibitor/profile/", ExhibitorProfileView.as_view()),
@@ -9,6 +9,7 @@ urlpatterns = [
     path("admin/exhibitions/create/", AdminCreateExhibitionView.as_view()),
     path("admin/exhibitions/<int:pk>/update/", AdminUpdateExhibitionView.as_view()),
     path("admin/exhibitions/<int:pk>/delete/", AdminDeleteExhibitionView.as_view()),
+    path("admin/exhibitions/<int:pk>/toggle-status/", AdminToggleExhibitionStatusView.as_view()),
     path("exhibitor/apply/<int:exhibition_id>/", ExhibitorApplyView.as_view()),
     path("admin/exhibitor-applications/<int:exhibition_id>/", AdminListExhibitorApplications.as_view()),
     path("admin/exhibitor-application/<int:application_id>/", AdminUpdateExhibitorApplication.as_view()),

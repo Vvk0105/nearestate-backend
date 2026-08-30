@@ -251,17 +251,21 @@ class AdminListExhibitionsView(APIView):
 
         today = timezone.localdate()
 
-        # Calculate counts based on current search query
+        # Calculate counts based on current search query (before status filtering)
         all_count = exhibitions.count()
         ongoing_count = exhibitions.filter(start_date__lte=today, end_date__gte=today).count()
         upcoming_count = exhibitions.filter(start_date__gt=today).count()
         past_count = exhibitions.filter(end_date__lt=today).count()
+        active_count = exhibitions.filter(is_active=True).count()
+        inactive_count = exhibitions.filter(is_active=False).count()
 
         counts = {
             "all": all_count,
             "ongoing": ongoing_count,
             "upcoming": upcoming_count,
-            "past": past_count
+            "past": past_count,
+            "active": active_count,
+            "inactive": inactive_count,
         }
 
         # Apply specific status filtering
@@ -271,7 +275,11 @@ class AdminListExhibitionsView(APIView):
             exhibitions = exhibitions.filter(start_date__gt=today).order_by("start_date")
         elif status_filter == 'past':
             exhibitions = exhibitions.filter(end_date__lt=today).order_by("-start_date")
-        else: # 'all'
+        elif status_filter == 'active':
+            exhibitions = exhibitions.filter(is_active=True).order_by("-created_at")
+        elif status_filter == 'inactive':
+            exhibitions = exhibitions.filter(is_active=False).order_by("-created_at")
+        else:  # 'all'
             # Prioritize: Ongoing (1), Upcoming (2), Past (3)
             exhibitions = (
                 exhibitions
@@ -438,6 +446,22 @@ class AdminDeleteExhibitionView(APIView):
     def delete(self, request, pk):
         Exhibition.objects.filter(pk=pk).delete()
         return Response({"message": "Deleted"})
+
+
+class AdminToggleExhibitionStatusView(APIView):
+    """PATCH endpoint to toggle is_active for a given exhibition."""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def patch(self, request, pk):
+        exhibition = get_object_or_404(Exhibition, pk=pk)
+        exhibition.is_active = not exhibition.is_active
+        exhibition.save(update_fields=['is_active'])
+        return Response({
+            "id": exhibition.id,
+            "is_active": exhibition.is_active,
+            "message": f"Exhibition {'activated' if exhibition.is_active else 'deactivated'} successfully."
+        })
 
 
 class AdminEventRecapView(APIView):
