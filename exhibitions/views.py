@@ -792,7 +792,7 @@ class ExhibitorStripeWebhookView(APIView):
         return Response({"status": "ok"})
 
     def _handle_checkout_completed(self, session):
-        session_id = session.get('id')
+        session_id = session.id
         try:
             app = ExhibitorApplication.objects.select_related(
                 'exhibition', 'user'
@@ -813,7 +813,7 @@ class ExhibitorStripeWebhookView(APIView):
         logger.info("checkout.session.completed: approved application %s", app.id)
 
     def _handle_checkout_expired(self, session):
-        session_id = session.get('id')
+        session_id = session.id
         try:
             app = ExhibitorApplication.objects.get(
                 stripe_session_id=session_id, status='PENDING'
@@ -824,7 +824,7 @@ class ExhibitorStripeWebhookView(APIView):
             pass
 
     def _handle_payment_intent_succeeded(self, intent):
-        intent_id = intent.get('id')
+        intent_id = intent.id
         try:
             app = ExhibitorApplication.objects.select_related(
                 'exhibition', 'user'
@@ -845,7 +845,7 @@ class ExhibitorStripeWebhookView(APIView):
         logger.info("payment_intent.succeeded: approved application %s", app.id)
 
     def _handle_payment_intent_failed(self, intent):
-        intent_id = intent.get('id')
+        intent_id = intent.id
         try:
             app = ExhibitorApplication.objects.get(
                 stripe_payment_intent=intent_id, status='PENDING'
