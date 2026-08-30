@@ -187,6 +187,7 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
 
 INSTALLED_APPS += ["django_celery_beat"]
 
