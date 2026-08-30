@@ -185,6 +185,9 @@ DEFAULT_FROM_EMAIL = "NearEstate <contact@nearestate.com>"
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
 INSTALLED_APPS += ["django_celery_beat"]
 
 CELERY_BROKER_URL = "redis://redis:6379/0"

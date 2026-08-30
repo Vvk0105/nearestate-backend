@@ -8,7 +8,7 @@ from .models import (
     EventRecap, RecapImage, RecapVideo, RecapSocialLink, ExhibitionPriceTier,
     ExhibitionSchedule,
 )
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from accounts.permissions import IsAdminUserRole, IsExhibitorWithProfile
 from .serializers import (
     ExhibitionSerializer, PropertySerializer,
@@ -18,14 +18,24 @@ from .serializers import (
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from exhibitions.utils.tasks import send_event_email, send_exhibitor_approval_email, send_visitor_qr_email
+from exhibitions.utils.tasks import (
+    send_event_email, send_exhibitor_approval_email, send_visitor_qr_email,
+    send_exhibitor_registration_email, send_exhibitor_booth_assigned_email,
+)
 from accounts.models import User
 from exhibitions.utils.image_tasks import compress_model_image
 from django.utils import timezone
 from django.db.models import Case, When, Value, IntegerField, Q, Prefetch
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 import logging
+import stripe
+
+stripe.api_key = getattr(settings, 'STRIPE_SECRET_KEY', '')
 
 logger = logging.getLogger(__name__)
+
 
 
 class ExhibitorProfileView(APIView):
@@ -159,6 +169,7 @@ class AdminCreateExhibitionView(APIView):
             visitor_capacity=data["visitor_capacity"],
             registration_fee=data.get("registration_fee"),
             currency_symbol=data.get("currency_symbol", "₹"),
+            currency_code=data.get("currency_code", "INR"),
             payment_details=data.get("payment_details") or "To confirm your exhibitor booking, please make payment to the following account:\nAccount Name: Delivery Around Pty Ltd\nBank: Commonwealth Bank, Australia\nBSB: 063-464\nAccount Number: 11095751\nPlease use your company name as the payment reference, upload the screen shot in this page. (Optional: email the payment confirmation to accounts@NearEstate.com, once the transfer has been completed).",
             map_image=data.get("map_image"),
         )
@@ -320,7 +331,7 @@ class AdminUpdateExhibitionView(APIView):
             "name", "description", "start_date", "end_date",
             "venue", "city", "state", "country", "is_active",
             "booth_capacity", "visitor_capacity", "registration_fee",
-            "currency_symbol", "payment_details", "venue_link", "location_link"
+            "currency_symbol", "currency_code", "payment_details", "venue_link", "location_link"
         ]:
             if field in request.data:
                 value = request.data[field]
@@ -579,7 +590,7 @@ class ExhibitorApplyView(APIView):
         app = ExhibitorApplication.objects.create(
             user=user,
             exhibition=exhibition,
-            payment_screenshot=request.FILES["payment_screenshot"],
+            payment_screenshot=request.FILES.get("payment_screenshot"),
             transaction_id=request.data.get("transaction_id"),
         )
 
@@ -591,6 +602,263 @@ class ExhibitorApplyView(APIView):
         )
 
         return Response({"message": "Application submitted"})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stripe: Web Checkout Session
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ExhibitorCreateCheckoutSessionView(APIView):
+    """
+    POST /exhibitions/exhibitor/create-checkout-session/<exhibition_id>/
+    Body: { "tier_id": <int> }
+    Creates a Stripe Checkout Session and a PENDING ExhibitorApplication.
+    Returns { "session_url": "https://checkout.stripe.com/..." }
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsExhibitorWithProfile]
+
+    def post(self, request, exhibition_id):
+        user = request.user
+        if user.active_role not in ("EXHIBITOR", "ADMIN"):
+            return Response({"error": "Only exhibitors can book"}, status=403)
+
+        exhibition = get_object_or_404(Exhibition, id=exhibition_id, is_active=True)
+
+        if exhibition.available_booths <= 0:
+            return Response({"error": "No booths available"}, status=400)
+
+        if ExhibitorApplication.objects.filter(user=user, exhibition=exhibition).exists():
+            return Response({"error": "You have already registered for this event"}, status=400)
+
+        tier_id = request.data.get("tier_id")
+        if not tier_id:
+            return Response({"error": "tier_id is required"}, status=400)
+
+        tier = get_object_or_404(ExhibitionPriceTier, id=tier_id, exhibition=exhibition)
+
+        # Create the PENDING application now so we have an ID for metadata
+        app = ExhibitorApplication.objects.create(
+            user=user,
+            exhibition=exhibition,
+            selected_tier=tier,
+            status="PENDING",
+        )
+
+        # Build Stripe Checkout Session
+        frontend_base = getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:5173')
+        try:
+            session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': exhibition.currency_code.lower(),
+                        'product_data': {
+                            'name': f"{tier.name} – {exhibition.name}",
+                            'description': tier.description or f"Exhibitor booth at {exhibition.name}",
+                        },
+                        'unit_amount': tier.fee * 100,   # Stripe expects cents/paise
+                    },
+                    'quantity': 1,
+                }],
+                mode='payment',
+                success_url=f"{frontend_base}/exhibitor/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
+                cancel_url=f"{frontend_base}/exhibitor/payment-cancel",
+                metadata={
+                    'application_id': str(app.id),
+                    'exhibition_id':  str(exhibition.id),
+                    'user_id':        str(user.id),
+                    'tier_id':        str(tier.id),
+                },
+                customer_email=user.email,
+            )
+        except stripe.error.StripeError as e:
+            # Rollback the pending application if Stripe fails
+            app.delete()
+            logger.exception("Stripe checkout session creation failed")
+            return Response({"error": str(e.user_message)}, status=502)
+
+        # Store session ID on the application
+        app.stripe_session_id = session.id
+        app.save(update_fields=['stripe_session_id'])
+
+        return Response({"session_url": session.url}, status=200)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stripe: Mobile PaymentIntent
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ExhibitorCreatePaymentIntentView(APIView):
+    """
+    POST /exhibitions/exhibitor/create-payment-intent/<exhibition_id>/
+    Body: { "tier_id": <int> }
+    For mobile SDK (React Native / iOS / Android).
+    Returns { "client_secret": "pi_xxx_secret_xxx", "application_id": 42 }
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsExhibitorWithProfile]
+
+    def post(self, request, exhibition_id):
+        user = request.user
+        if user.active_role not in ("EXHIBITOR", "ADMIN"):
+            return Response({"error": "Only exhibitors can book"}, status=403)
+
+        exhibition = get_object_or_404(Exhibition, id=exhibition_id, is_active=True)
+
+        if exhibition.available_booths <= 0:
+            return Response({"error": "No booths available"}, status=400)
+
+        if ExhibitorApplication.objects.filter(user=user, exhibition=exhibition).exists():
+            return Response({"error": "You have already registered for this event"}, status=400)
+
+        tier_id = request.data.get("tier_id")
+        if not tier_id:
+            return Response({"error": "tier_id is required"}, status=400)
+
+        tier = get_object_or_404(ExhibitionPriceTier, id=tier_id, exhibition=exhibition)
+
+        app = ExhibitorApplication.objects.create(
+            user=user,
+            exhibition=exhibition,
+            selected_tier=tier,
+            status="PENDING",
+        )
+
+        try:
+            intent = stripe.PaymentIntent.create(
+                amount=tier.fee * 100,
+                currency=exhibition.currency_code.lower(),
+                receipt_email=user.email,
+                metadata={
+                    'application_id': str(app.id),
+                    'exhibition_id':  str(exhibition.id),
+                    'user_id':        str(user.id),
+                    'tier_id':        str(tier.id),
+                },
+            )
+        except stripe.error.StripeError as e:
+            app.delete()
+            logger.exception("Stripe PaymentIntent creation failed")
+            return Response({"error": str(e.user_message)}, status=502)
+
+        app.stripe_payment_intent = intent.id
+        app.save(update_fields=['stripe_payment_intent'])
+
+        return Response({
+            "client_secret": intent.client_secret,
+            "application_id": app.id,
+        }, status=200)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stripe: Webhook handler (no auth — verified via Stripe signature)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ExhibitorStripeWebhookView(APIView):
+    """
+    POST /exhibitions/stripe/webhook/
+    Stripe calls this endpoint to confirm payment events.
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        payload    = request.body
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE', '')
+        webhook_secret = getattr(settings, 'STRIPE_WEBHOOK_SECRET', '')
+
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        except stripe.error.SignatureVerificationError:
+            logger.warning("Stripe webhook signature verification failed")
+            return Response({"error": "Invalid signature"}, status=400)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+        event_type = event['type']
+        data       = event['data']['object']
+
+        if event_type == 'checkout.session.completed':
+            self._handle_checkout_completed(data)
+
+        elif event_type == 'checkout.session.expired':
+            self._handle_checkout_expired(data)
+
+        elif event_type == 'payment_intent.succeeded':
+            self._handle_payment_intent_succeeded(data)
+
+        elif event_type == 'payment_intent.payment_failed':
+            self._handle_payment_intent_failed(data)
+
+        return Response({"status": "ok"})
+
+    def _handle_checkout_completed(self, session):
+        session_id = session.get('id')
+        try:
+            app = ExhibitorApplication.objects.select_related(
+                'exhibition', 'user'
+            ).get(stripe_session_id=session_id)
+        except ExhibitorApplication.DoesNotExist:
+            logger.error("Webhook checkout.session.completed: no app for session %s", session_id)
+            return
+
+        if app.status == 'APPROVED':
+            return  # Idempotent: already processed
+
+        app.status = 'APPROVED'
+        app.exhibition.available_booths = max(0, app.exhibition.available_booths - 1)
+        app.exhibition.save(update_fields=['available_booths'])
+        app.save(update_fields=['status'])
+
+        send_exhibitor_registration_email.delay(app.id)
+        logger.info("checkout.session.completed: approved application %s", app.id)
+
+    def _handle_checkout_expired(self, session):
+        session_id = session.get('id')
+        try:
+            app = ExhibitorApplication.objects.get(
+                stripe_session_id=session_id, status='PENDING'
+            )
+            app.delete()
+            logger.info("checkout.session.expired: removed pending application for session %s", session_id)
+        except ExhibitorApplication.DoesNotExist:
+            pass
+
+    def _handle_payment_intent_succeeded(self, intent):
+        intent_id = intent.get('id')
+        try:
+            app = ExhibitorApplication.objects.select_related(
+                'exhibition', 'user'
+            ).get(stripe_payment_intent=intent_id)
+        except ExhibitorApplication.DoesNotExist:
+            logger.error("Webhook payment_intent.succeeded: no app for intent %s", intent_id)
+            return
+
+        if app.status == 'APPROVED':
+            return
+
+        app.status = 'APPROVED'
+        app.exhibition.available_booths = max(0, app.exhibition.available_booths - 1)
+        app.exhibition.save(update_fields=['available_booths'])
+        app.save(update_fields=['status'])
+
+        send_exhibitor_registration_email.delay(app.id)
+        logger.info("payment_intent.succeeded: approved application %s", app.id)
+
+    def _handle_payment_intent_failed(self, intent):
+        intent_id = intent.get('id')
+        try:
+            app = ExhibitorApplication.objects.get(
+                stripe_payment_intent=intent_id, status='PENDING'
+            )
+            app.status = 'REJECTED'
+            app.save(update_fields=['status'])
+            logger.info("payment_intent.payment_failed: rejected application %s", app.id)
+        except ExhibitorApplication.DoesNotExist:
+            pass
+
 
 class AdminListExhibitorApplications(APIView):
     authentication_classes = [JWTAuthentication]
@@ -974,12 +1242,17 @@ class PublicExhibitionPropertiesView(APIView):
         return Response(PropertySerializer(props, many=True, context={'request': request}).data)
 
 class PublicExhibitionDetailView(APIView):
+    authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
 
     def get(self, request, id):
         # Apply prefetch_related for images to avoid individual query evaluation limits
-        # and ensure only active events are fetchable publicly.
-        query = Exhibition.objects.prefetch_related('images').filter(is_active=True)
+        query = Exhibition.objects.prefetch_related('images')
+        
+        # Only show active events to public users, but let admins see all
+        if not request.user.is_authenticated or request.user.active_role != 'ADMIN':
+            query = query.filter(is_active=True)
+            
         exhibition = get_object_or_404(query, id=id)
         serializer = ExhibitionSerializer(exhibition, context={'request': request})
         return Response(serializer.data)
@@ -1552,11 +1825,12 @@ class AdminUpdateExhibitorInEventView(APIView):
         )
 
         # Update booth number on application
-        booth_number = request.data.get('booth_number')
+        booth_number      = request.data.get('booth_number')
+        was_unassigned    = app.booth_number is None
         if booth_number is not None:
             app.booth_number = booth_number
 
-        # Update badge if provided
+        # Update badge if a file was explicitly uploaded by admin
         badge_file = request.FILES.get('badge')
         if badge_file:
             app.badge = badge_file
@@ -1572,6 +1846,10 @@ class AdminUpdateExhibitorInEventView(APIView):
                     setattr(profile, field, val)
             profile.save()
 
+        # Fire booth-assigned email when booth is newly assigned (no manual badge upload needed)
+        if booth_number is not None and was_unassigned and not badge_file:
+            send_exhibitor_booth_assigned_email.delay(app.id)
+
         return Response({
             "id": app.id,
             "booth_number": app.booth_number,
@@ -1580,7 +1858,7 @@ class AdminUpdateExhibitorInEventView(APIView):
             "contact_number": profile.contact_number if profile else None,
             "business_type": profile.business_type if profile else None,
             "council_area": profile.council_area if profile else None,
-            "badge": app.badge.url if app.badge else None,
+            "badge": request.build_absolute_uri(app.badge.url) if app.badge else None,
         })
 
 

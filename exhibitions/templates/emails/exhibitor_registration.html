@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Confirmed – {{ exhibition_name }}</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4; }
+        .email-container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .content { padding: 30px; color: #333333; line-height: 1.6; }
+        .content h2 { color: #1a1a2e; margin-top: 0; }
+        .success-box { background-color: #e8f5e9; padding: 20px; margin: 20px 0; border-left: 4px solid #4caf50; border-radius: 4px; }
+        .success-box p { margin: 8px 0; }
+        .info-box { background-color: #e3f2fd; padding: 16px 20px; margin: 20px 0; border-left: 4px solid #1d4ed8; border-radius: 4px; }
+        .info-box p { margin: 6px 0; font-size: 14px; color: #1a3a6e; }
+        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+        .detail-row:last-child { border-bottom: none; }
+        .label { color: #888888; }
+        .value { font-weight: bold; color: #1a1a2e; }
+        .badge-note { background-color: #fff3e0; padding: 14px 18px; border-radius: 6px; border-left: 4px solid #ff9800; margin: 18px 0; font-size: 13px; color: #7a4f00; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="content">
+            <h2>🎉 Booking Confirmed – {{ exhibition_name }}</h2>
+
+            <p>Hello {{ exhibitor_name }},</p>
+
+            <p>Your exhibitor registration for <strong>{{ exhibition_name }}</strong> has been successfully confirmed. We're excited to have you on board!</p>
+
+            <div class="success-box">
+                <p><strong>✅ Registration Status: Confirmed</strong></p>
+                <p>Your payment has been processed successfully. Please find your exhibitor badge attached to this email.</p>
+            </div>
+
+            <p><strong>Registration Details</strong></p>
+            <div style="border: 1px solid #e8e8e8; border-radius: 6px; padding: 4px 16px; margin: 8px 0 18px;">
+                {% if company_name %}
+                <div class="detail-row"><span class="label">Company</span><span class="value">{{ company_name }}</span></div>
+                {% endif %}
+                <div class="detail-row"><span class="label">Event</span><span class="value">{{ exhibition_name }}</span></div>
+                <div class="detail-row"><span class="label">Dates</span><span class="value">{{ event_dates }}</span></div>
+                <div class="detail-row"><span class="label">Venue</span><span class="value">{{ event_venue }}</span></div>
+                {% if tier_name %}
+                <div class="detail-row"><span class="label">Plan</span><span class="value">{{ tier_name }}{% if tier_fee %} — {{ tier_fee }}{% endif %}</span></div>
+                {% endif %}
+            </div>
+
+            <div class="badge-note">
+                <strong>📋 About Your Booth Number</strong><br>
+                Your booth number hasn't been assigned yet. Don't worry — the event organiser will assign it shortly and you'll receive <strong>another email</strong> with your updated badge that includes your booth number.
+            </div>
+
+            <div class="info-box">
+                <p>📎 Your exhibitor badge is attached to this email. Present it at the event entrance.</p>
+                <p>🔢 Your badge currently shows "To be assigned" for the booth number — an updated badge with your booth number will follow.</p>
+            </div>
+
+            <p>We look forward to seeing you at the event. If you have any questions, feel free to reach out to us.</p>
+
+            <p>Best regards,<br><strong>NearEstate Team</strong></p>
+        </div>
+
+        <!-- ══════════════ SOCIAL & APP FOOTER ══════════════ -->
+        <div style="background:#f7f7f7;padding:28px 24px;text-align:center;font-family:Arial,sans-serif;border-top:1px solid #e8e8e8;">
+            <p style="color:#888888;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 14px;">Follow us on</p>
+            <div style="margin-bottom:22px;">
+                <a href="https://www.facebook.com/NearEstatecom" style="display:inline-block;margin:0 6px;text-decoration:none;" target="_blank">
+                    <img src="https://img.icons8.com/color/48/facebook-new.png" width="44" height="44" alt="Facebook" style="display:inline-block;border:0;" />
+                </a>
+                <a href="https://www.instagram.com/nearestate/" style="display:inline-block;margin:0 6px;text-decoration:none;" target="_blank">
+                    <img src="https://img.icons8.com/color/48/instagram-new.png" width="44" height="44" alt="Instagram" style="display:inline-block;border:0;" />
+                </a>
+                <a href="https://www.linkedin.com/company/nearestate-com/" style="display:inline-block;margin:0 6px;text-decoration:none;" target="_blank">
+                    <img src="https://img.icons8.com/color/48/linkedin.png" width="44" height="44" alt="LinkedIn" style="display:inline-block;border:0;" />
+                </a>
+            </div>
+            <hr style="border:none;border-top:1px solid #e0e0e0;margin:0 auto 18px;width:80%;" />
+            <p style="color:#666666;font-size:12px;line-height:1.8;margin:0 0 6px;">
+                Need assistance? Contact <a href="mailto:info@nearestate.com" style="color:#1d4ed8;text-decoration:none;">info@nearestate.com</a> or call <a href="tel:+61426535177" style="color:#1d4ed8;text-decoration:none;">+61 426 535 177</a>.<br />
+                <a href="https://nearestate.com/" style="color:#1d4ed8;font-weight:700;text-decoration:none;">NearEstate.com</a> &nbsp;|&nbsp; Pakenham, Victoria 3810, Australia
+            </p>
+            <p style="color:#aaaaaa;font-size:11px;margin:0 0 20px;">&#169; NearEstate &#8212; This is an automated message, please do not reply.</p>
+            <hr style="border:none;border-top:1px solid #e0e0e0;margin:0 auto 18px;width:80%;" />
+            <p style="color:#888888;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 14px;">Download Our App</p>
+            <div>
+                <a href="https://play.google.com/store/apps/details?id=com.nearestate.events" style="display:inline-block;margin:4px 6px;text-decoration:none;vertical-align:middle;" target="_blank">
+                    <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="65" alt="Get it on Google Play" style="display:inline-block;border:0;" />
+                </a>
+                <a href="https://apps.apple.com/au/app/near-estate/id6760655554" style="display:inline-block;margin:4px 6px;text-decoration:none;vertical-align:middle;" target="_blank">
+                    <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83" height="50" alt="Download on the App Store" style="display:inline-block;border:0;" />
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

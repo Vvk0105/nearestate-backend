@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ExhibitorProfileView,  ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, AdminToggleExhibitionStatusView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView, AdminDashboardStatsView, AdminEventVisitorsView, AdminEventExhibitorsView, AdminToggleVisitorCheckInView, AdminAddExhibitorView, AdminAddVisitorView, AdminCheckExhibitorView, AdminEventRecapView, AdminUpdateExhibitorInEventView, AdminDeleteExhibitorInEventView, AdminUpdateVisitorInEventView, AdminDeleteVisitorInEventView
+from .views import ExhibitorProfileView, ExhibitorProfileStatusView, AdminUpdateExhibitionView, AdminCreateExhibitionView, AdminDeleteExhibitionView, AdminListExhibitionsView, AdminToggleExhibitionStatusView, ExhibitorApplyView, AdminListExhibitorApplications, AdminUpdateExhibitorApplication, PublicExhibitionListView, ExhibitorApplicationStatusView, VisitorRegistration, VisitorQRListView, VisitorRegisterView, AdminQRScanView, ExhibitorCreatePropertyView, ExhibitorMyPropertiesView, ExhibitorDeletePropertyView, PublicExhibitionPropertiesView, PublicExhibitionDetailView, PublicExhibitorsByExhibitionView, VisitorMyRegistrationsView, ExhibitorEditPropertyView, AdminDashboardStatsView, AdminEventVisitorsView, AdminEventExhibitorsView, AdminToggleVisitorCheckInView, AdminAddExhibitorView, AdminAddVisitorView, AdminCheckExhibitorView, AdminEventRecapView, AdminUpdateExhibitorInEventView, AdminDeleteExhibitorInEventView, AdminUpdateVisitorInEventView, AdminDeleteVisitorInEventView, ExhibitorCreateCheckoutSessionView, ExhibitorCreatePaymentIntentView, ExhibitorStripeWebhookView
 
 urlpatterns = [
     path("exhibitor/profile/", ExhibitorProfileView.as_view()),
@@ -37,4 +37,8 @@ urlpatterns = [
     path("admin/exhibitions/<int:exhibition_id>/exhibitors/<int:application_id>/delete/", AdminDeleteExhibitorInEventView.as_view()),
     path("admin/exhibitions/<int:exhibition_id>/visitors/<int:registration_id>/update/", AdminUpdateVisitorInEventView.as_view()),
     path("admin/exhibitions/<int:exhibition_id>/visitors/<int:registration_id>/delete/", AdminDeleteVisitorInEventView.as_view()),
+    # ── Stripe ──────────────────────────────────────────────────────────────────
+    path("exhibitor/create-checkout-session/<int:exhibition_id>/", ExhibitorCreateCheckoutSessionView.as_view()),
+    path("exhibitor/create-payment-intent/<int:exhibition_id>/",   ExhibitorCreatePaymentIntentView.as_view()),
+    path("stripe/webhook/",                                         ExhibitorStripeWebhookView.as_view()),
 ]

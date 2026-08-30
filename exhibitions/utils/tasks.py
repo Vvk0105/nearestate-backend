@@ -134,6 +134,150 @@ def send_exhibitor_approval_email(
 
 
 # ---------------------------------------------------------------------------
+# Exhibitor Registration Confirmed (fires after Stripe payment success)
+# ---------------------------------------------------------------------------
+
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3, "countdown": 10},
+)
+def send_exhibitor_registration_email(
+    self,
+    application_id,
+):
+    """
+    Send a booking-confirmed email to the exhibitor immediately after
+    Stripe payment succeeds. Badge is attached with Booth No = "To be assigned".
+    """
+    from exhibitions.models import ExhibitorApplication
+    from exhibitions.utils.badge_generator import generate_exhibitor_badge
+
+    try:
+        app = ExhibitorApplication.objects.select_related(
+            'user', 'exhibition', 'selected_tier',
+            'user__exhibitorprofile'
+        ).get(id=application_id)
+    except ExhibitorApplication.DoesNotExist:
+        logger.error("send_exhibitor_registration_email: application %s not found", application_id)
+        return
+
+    exhibition = app.exhibition
+    user       = app.user
+
+    # Generate (or regenerate) the badge PDF
+    try:
+        pdf_bytes = generate_exhibitor_badge(app)
+    except Exception:
+        logger.exception("Badge generation failed for application %s", application_id)
+        pdf_bytes = None
+
+    exhibitor_name = user.get_full_name() or user.username or user.email
+    profile        = getattr(user, 'exhibitorprofile', None)
+    company_name   = profile.company_name if profile else ""
+    tier_name      = app.selected_tier.name if app.selected_tier else ""
+    tier_fee       = f"{exhibition.currency_symbol}{app.selected_tier.fee}" if app.selected_tier else ""
+
+    subject = f"Booking Confirmed – {exhibition.name}"
+
+    html_content = render_to_string('emails/exhibitor_registration.html', {
+        'exhibitor_name': exhibitor_name,
+        'company_name':   company_name,
+        'exhibition_name': exhibition.name,
+        'event_dates':    f"{exhibition.start_date.strftime('%d %b')} – {exhibition.end_date.strftime('%d %b %Y')}",
+        'event_venue':    f"{exhibition.venue}, {exhibition.city}",
+        'tier_name':      tier_name,
+        'tier_fee':       tier_fee,
+    })
+
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=f"Hello {exhibitor_name},\n\nYour booking for {exhibition.name} is confirmed. Your booth number will be assigned shortly.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    msg.attach_alternative(html_content, "text/html")
+
+    # Attach the badge PDF
+    if pdf_bytes:
+        msg.attach(f"badge_{app.id}.pdf", pdf_bytes, "application/pdf")
+
+    msg.send(fail_silently=False)
+    logger.info("send_exhibitor_registration_email: sent to %s for application %s", user.email, application_id)
+
+
+# ---------------------------------------------------------------------------
+# Booth Number Assigned (fires when admin assigns a booth)
+# ---------------------------------------------------------------------------
+
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3, "countdown": 10},
+)
+def send_exhibitor_booth_assigned_email(
+    self,
+    application_id,
+):
+    """
+    Send an email to the exhibitor when their booth number has been assigned.
+    Regenerates the badge PDF with the actual booth number.
+    """
+    from exhibitions.models import ExhibitorApplication
+    from exhibitions.utils.badge_generator import generate_exhibitor_badge
+
+    try:
+        app = ExhibitorApplication.objects.select_related(
+            'user', 'exhibition', 'selected_tier',
+            'user__exhibitorprofile'
+        ).get(id=application_id)
+    except ExhibitorApplication.DoesNotExist:
+        logger.error("send_exhibitor_booth_assigned_email: application %s not found", application_id)
+        return
+
+    exhibition = app.exhibition
+    user       = app.user
+
+    # Regenerate badge with actual booth number
+    try:
+        pdf_bytes = generate_exhibitor_badge(app)
+    except Exception:
+        logger.exception("Badge regeneration failed for application %s", application_id)
+        pdf_bytes = None
+
+    exhibitor_name = user.get_full_name() or user.username or user.email
+    profile        = getattr(user, 'exhibitorprofile', None)
+    company_name   = profile.company_name if profile else ""
+
+    subject = f"Your Booth Number is Ready – {exhibition.name}"
+
+    html_content = render_to_string('emails/exhibitor_booth_assigned.html', {
+        'exhibitor_name':  exhibitor_name,
+        'company_name':    company_name,
+        'exhibition_name': exhibition.name,
+        'event_dates':     f"{exhibition.start_date.strftime('%d %b')} – {exhibition.end_date.strftime('%d %b %Y')}",
+        'event_venue':     f"{exhibition.venue}, {exhibition.city}",
+        'booth_number':    app.booth_number,
+    })
+
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=f"Hello {exhibitor_name},\n\nYour booth number {app.booth_number} has been assigned for {exhibition.name}.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    msg.attach_alternative(html_content, "text/html")
+
+    if pdf_bytes:
+        msg.attach(f"badge_{app.id}.pdf", pdf_bytes, "application/pdf")
+
+    msg.send(fail_silently=False)
+    logger.info("send_exhibitor_booth_assigned_email: sent to %s (booth %s)", user.email, app.booth_number)
+
+
+
+
+# ---------------------------------------------------------------------------
 # Feature 2 — Visitor QR Code email
 # ---------------------------------------------------------------------------
 

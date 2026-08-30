@@ -75,9 +75,12 @@ class ExhibitionImageSerializer(serializers.ModelSerializer):
 # ── Price Tiers ───────────────────────────────────────────────────────────
 
 class ExhibitionPriceTierSerializer(serializers.ModelSerializer):
+    currency_code   = serializers.CharField(source='exhibition.currency_code', read_only=True)
+    currency_symbol = serializers.CharField(source='exhibition.currency_symbol', read_only=True)
+
     class Meta:
-        model = ExhibitionPriceTier
-        fields = ["id", "name", "fee", "description", "order"]
+        model  = ExhibitionPriceTier
+        fields = ["id", "name", "fee", "description", "order", "currency_code", "currency_symbol"]
 
 
 # ── Event Recap ────────────────────────────────────────────────────────────
@@ -247,6 +250,8 @@ class ExhibitorApplicationSerializer(serializers.ModelSerializer):
     exhibitor_profile = serializers.SerializerMethodField()
     payment_screenshot = serializers.SerializerMethodField()
     badge = serializers.SerializerMethodField()
+    selected_tier_name = serializers.SerializerMethodField()
+    selected_tier_fee  = serializers.SerializerMethodField()
 
     class Meta:
         model = ExhibitorApplication
@@ -257,7 +262,7 @@ class ExhibitorApplicationSerializer(serializers.ModelSerializer):
         if not profile:
             return None
         return ExhibitorProfileMiniSerializer(profile).data
-    
+
     def get_payment_screenshot(self, obj):
         request = self.context.get("request")
         if obj.payment_screenshot:
@@ -270,3 +275,8 @@ class ExhibitorApplicationSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.badge.url)
         return None
 
+    def get_selected_tier_name(self, obj):
+        return obj.selected_tier.name if obj.selected_tier else None
+
+    def get_selected_tier_fee(self, obj):
+        return obj.selected_tier.fee if obj.selected_tier else None

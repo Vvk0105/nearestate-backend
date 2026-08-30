@@ -75,10 +75,9 @@ class Exhibition(models.Model):
 
     registration_fee = models.PositiveIntegerField(blank=True, null=True)
     currency_symbol = models.CharField(max_length=10, default='₹')
-    payment_details = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Free-text payment instructions shown to exhibitors (e.g. Account No, IFSC, IBAN, SWIFT)"
+    currency_code = models.CharField(
+        max_length=10, default='INR',
+        help_text="ISO 4217 currency code used for Stripe (e.g. INR, AUD, USD)"
     )
 
     def save(self, *args, **kwargs):
@@ -121,15 +120,6 @@ class ExhibitorApplication(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     exhibition = models.ForeignKey("Exhibition", on_delete=models.CASCADE)
 
-    payment_screenshot = models.FileField(
-        upload_to="payments/screenshots/",
-        blank=True,
-        null=True,
-    )
-    transaction_id = models.CharField(
-        max_length=100, blank=True, null=True
-    )
-
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="PENDING"
     )
@@ -139,6 +129,23 @@ class ExhibitorApplication(models.Model):
     )
     badge = models.FileField(
         upload_to="exhibitors/badges/", blank=True, null=True
+    )
+
+    # Stripe payment fields
+    selected_tier = models.ForeignKey(
+        'ExhibitionPriceTier',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='applications',
+        help_text="Pricing tier chosen by the exhibitor at checkout"
+    )
+    stripe_session_id = models.CharField(
+        max_length=255, blank=True, null=True,
+        help_text="Stripe Checkout Session ID (web flow)"
+    )
+    stripe_payment_intent = models.CharField(
+        max_length=255, blank=True, null=True,
+        help_text="Stripe PaymentIntent ID (mobile SDK flow)"
     )
 
     applied_at = models.DateTimeField(auto_now_add=True)
