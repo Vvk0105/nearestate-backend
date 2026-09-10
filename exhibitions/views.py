@@ -1021,6 +1021,26 @@ class ExhibitorApplicationStatusView(APIView):
 
         return Response(data)
 
+    def delete(self, request):
+        """Cancel (delete) a PENDING application for a given exhibition."""
+        user = request.user
+        exhibition_id = request.query_params.get('exhibition_id')
+        if not exhibition_id:
+            return Response({"error": "exhibition_id is required"}, status=400)
+
+        try:
+            app = ExhibitorApplication.objects.get(
+                user=user,
+                exhibition_id=exhibition_id,
+                status='PENDING'
+            )
+        except ExhibitorApplication.DoesNotExist:
+            return Response({"error": "No pending application found for this event"}, status=404)
+
+        app.delete()
+        return Response({"message": "Application cancelled successfully"}, status=200)
+
+
 class VisitorRegisterView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
