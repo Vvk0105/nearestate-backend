@@ -664,7 +664,7 @@ class ExhibitorCreateCheckoutSessionView(APIView):
                 }],
                 mode='payment',
                 success_url=f"{frontend_base}/exhibitor/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
-                cancel_url=f"{frontend_base}/exhibitor/payment-cancel",
+                cancel_url=f"{frontend_base}/exhibitor/payment-cancel?exhibition_id={exhibition_id}",
                 metadata={
                     'application_id': str(app.id),
                     'exhibition_id':  str(exhibition.id),
