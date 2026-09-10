@@ -625,8 +625,12 @@ class ExhibitorCreateCheckoutSessionView(APIView):
         if exhibition.available_booths <= 0:
             return Response({"error": "No booths available"}, status=400)
 
-        if ExhibitorApplication.objects.filter(user=user, exhibition=exhibition).exists():
-            return Response({"error": "You have already registered for this event"}, status=400)
+        existing_app = ExhibitorApplication.objects.filter(user=user, exhibition=exhibition).first()
+        if existing_app:
+            if existing_app.status == 'APPROVED':
+                return Response({"error": "You have already registered for this event"}, status=400)
+            elif existing_app.status == 'PENDING':
+                existing_app.delete()
 
         tier_id = request.data.get("tier_id")
         if not tier_id:
@@ -706,8 +710,12 @@ class ExhibitorCreatePaymentIntentView(APIView):
         if exhibition.available_booths <= 0:
             return Response({"error": "No booths available"}, status=400)
 
-        if ExhibitorApplication.objects.filter(user=user, exhibition=exhibition).exists():
-            return Response({"error": "You have already registered for this event"}, status=400)
+        existing_app = ExhibitorApplication.objects.filter(user=user, exhibition=exhibition).first()
+        if existing_app:
+            if existing_app.status == 'APPROVED':
+                return Response({"error": "You have already registered for this event"}, status=400)
+            elif existing_app.status == 'PENDING':
+                existing_app.delete()
 
         tier_id = request.data.get("tier_id")
         if not tier_id:
