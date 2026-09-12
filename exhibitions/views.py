@@ -83,6 +83,7 @@ class ExhibitorProfileView(APIView):
             council_area=request.data.get("council_area"),
             business_type=request.data.get("business_type"),
             contact_number=request.data.get("contact_number"),
+            website=request.data.get("website") or None,
         )
 
         # Mark profile as completed
@@ -109,7 +110,7 @@ class ExhibitorProfileView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        for field in ["company_name", "council_area", "business_type", "contact_number"]:
+        for field in ["company_name", "council_area", "business_type", "contact_number", "website"]:
             if field in request.data:
                 setattr(profile, field, request.data[field])
 
@@ -1537,10 +1538,12 @@ class AdminEventExhibitorsView(APIView):
                 "company_name": profile.company_name if profile else app.user.username,
                 "email": app.user.email,
                 "booth_number": app.booth_number,
+                "booking_ref": app.booking_ref,
                 "badge": app.badge.url if app.badge else None,
                 "contact_number": profile.contact_number if profile else None,
                 "business_type": profile.business_type if profile else None,
-                "council_area": profile.council_area if profile else None
+                "council_area": profile.council_area if profile else None,
+                "website": profile.website if profile else None,
             })
             
         return Response({
@@ -1629,6 +1632,7 @@ class AdminCheckExhibitorView(APIView):
                 "business_type": profile.business_type,
                 "council_area": profile.council_area,
                 "contact_number": profile.contact_number,
+                "website": profile.website or "",
             } if profile else None,
         })
 
@@ -1651,6 +1655,7 @@ class AdminAddExhibitorView(APIView):
         council_area = request.data.get("council_area", "").strip()
         business_type = request.data.get("business_type", "").strip()
         contact_number = request.data.get("contact_number", "").strip()
+        website = request.data.get("website", "").strip() or None
         booth_number = request.data.get("booth_number")
         badge_file = request.FILES.get("badge")
 
@@ -1690,6 +1695,7 @@ class AdminAddExhibitorView(APIView):
                 "council_area": council_area or "N/A",
                 "business_type": business_type or "OTHER_BUSINESSES",
                 "contact_number": contact_number or "N/A",
+                "website": website,
             }
         )
 
@@ -1707,6 +1713,9 @@ class AdminAddExhibitorView(APIView):
                 updated = True
             if contact_number:
                 profile.contact_number = contact_number
+                updated = True
+            if website is not None:
+                profile.website = website or None
                 updated = True
             if updated:
                 profile.save()
@@ -1865,7 +1874,7 @@ class AdminUpdateExhibitorInEventView(APIView):
         # Update ExhibitorProfile fields
         profile = getattr(app.user, 'exhibitorprofile', None)
         if profile:
-            for field in ['company_name', 'contact_number', 'business_type', 'council_area']:
+            for field in ['company_name', 'contact_number', 'business_type', 'council_area', 'website']:
                 val = request.data.get(field)
                 if val:
                     setattr(profile, field, val)
@@ -1879,10 +1888,12 @@ class AdminUpdateExhibitorInEventView(APIView):
             "id": app.id,
             "booth_number": app.booth_number,
             "email": app.user.email,
+            "booking_ref": app.booking_ref,
             "company_name": profile.company_name if profile else app.user.username,
             "contact_number": profile.contact_number if profile else None,
             "business_type": profile.business_type if profile else None,
             "council_area": profile.council_area if profile else None,
+            "website": profile.website if profile else None,
             "badge": request.build_absolute_uri(app.badge.url) if app.badge else None,
         })
 

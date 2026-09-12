@@ -35,6 +35,7 @@ class ExhibitorProfileSerializer(serializers.ModelSerializer):
             "council_area",
             "business_type",
             "contact_number",
+            "website",
         ]
     
     def validate_company_name(self, value):
@@ -243,6 +244,7 @@ class ExhibitorProfileMiniSerializer(serializers.ModelSerializer):
             "business_type",
             "council_area",
             "contact_number",
+            "website",
         ]
 
 class ExhibitorApplicationSerializer(serializers.ModelSerializer):

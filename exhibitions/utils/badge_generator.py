@@ -20,7 +20,6 @@ When folded:
 """
 
 import io
-import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -64,11 +63,11 @@ def generate_exhibitor_badge(application) -> bytes:
     person_name  = user.get_full_name() or user.username or user.email
     company_name = profile.company_name if profile else ""
     email        = user.email
-    website      = ""                    # add later when field exists
+    website      = profile.website or "" if profile else ""  # from ExhibitorProfile
     job_title    = ""                    # add later when field exists
     booth_number = str(application.booth_number) if application.booth_number else ""
     package      = application.selected_tier.name.upper() if application.selected_tier else ""
-    booking_ref  = f"NE-{exhibition.id:04d}-{application.id:04d}"
+    booking_ref  = application.booking_ref or f"NE-{exhibition.id:04d}-{application.id:04d}"
 
     event_name   = exhibition.name.upper()
     start_date   = exhibition.start_date
@@ -82,10 +81,8 @@ def generate_exhibitor_badge(application) -> bytes:
         sched = schedules.first()
         start_t = sched.start_time.strftime('%I:%M %p').lstrip('0')
         end_t   = sched.end_time.strftime('%I:%M %p').lstrip('0')
-        time_str = f"{start_t} - {end_t}"
-        # Check-in 30 min before
-        checkin_dt = datetime.datetime.combine(datetime.date.today(), sched.start_time) - datetime.timedelta(minutes=30)
-        checkin_str = f"from {checkin_dt.strftime('%I:%M %p').lstrip('0')}"
+        time_str    = f"{start_t} - {end_t}"
+        checkin_str = f"from {start_t}"  # check-in time = event start time
     else:
         time_str    = ""
         checkin_str = ""

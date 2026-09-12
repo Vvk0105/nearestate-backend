@@ -46,6 +46,7 @@ class ExhibitorProfile(models.Model):
         ],
     )
     contact_number = models.CharField(max_length=15)
+    website = models.URLField(max_length=500, blank=True, null=True, help_text="Optional exhibitor website URL")
 
     def __str__(self):
         return self.company_name
@@ -148,10 +149,21 @@ class ExhibitorApplication(models.Model):
         help_text="Stripe PaymentIntent ID (mobile SDK flow)"
     )
 
+    booking_ref = models.CharField(
+        max_length=30, unique=True, blank=True, null=True,
+        help_text="Auto-generated booking reference e.g. NE-0076-0065"
+    )
     applied_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ("user", "exhibition")
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Generate booking_ref after first save (we need self.pk and self.exhibition_id)
+        if not self.booking_ref:
+            self.booking_ref = f"NE-{self.exhibition_id:04d}-{self.pk:04d}"
+            ExhibitorApplication.objects.filter(pk=self.pk).update(booking_ref=self.booking_ref)
 
     def __str__(self):
         return f"{self.user} - {self.exhibition}"
