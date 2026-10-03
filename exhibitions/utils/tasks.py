@@ -11,6 +11,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _get_bcc_list():
+    """Return configured BCC list for admin audit/tracking."""
+    bcc = getattr(settings, 'EMAIL_BCC_ADDRESS', None)
+    return [bcc] if bcc else None
+
+
 # ---------------------------------------------------------------------------
 # Feature 3 — Optimised bulk send helper
 # ---------------------------------------------------------------------------
@@ -123,6 +129,7 @@ def send_exhibitor_approval_email(
         body="Please view this email in an HTML-compatible email client.",
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[email],
+        bcc=_get_bcc_list(),
     )
     msg.attach_alternative(html_content, "text/html")
 
@@ -195,6 +202,7 @@ def send_exhibitor_registration_email(
         body=f"Hello {exhibitor_name},\n\nYour booking for {exhibition.name} is confirmed. Your booth number will be assigned shortly.",
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[user.email],
+        bcc=_get_bcc_list(),
     )
     msg.attach_alternative(html_content, "text/html")
 
@@ -265,6 +273,7 @@ def send_exhibitor_booth_assigned_email(
         body=f"Hello {exhibitor_name},\n\nYour booth number {app.booth_number} has been assigned for {exhibition.name}.",
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[user.email],
+        bcc=_get_bcc_list(),
     )
     msg.attach_alternative(html_content, "text/html")
 
@@ -351,6 +360,7 @@ def send_visitor_qr_email(
         ),
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[email],
+        bcc=_get_bcc_list(),
     )
     msg.mixed_subtype = 'related'  # allows inline image embedding
     msg.attach_alternative(html_content, "text/html")

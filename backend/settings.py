@@ -182,6 +182,7 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 DEFAULT_FROM_EMAIL = "NearEstate <contact@nearestate.com>"
+EMAIL_BCC_ADDRESS = os.getenv("EMAIL_BCC_ADDRESS", "contact@nearestate.com")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
