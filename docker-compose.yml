@@ -1,6 +1,7 @@
 services:
   web:
     build: .
+    restart: unless-stopped
     command: >
       gunicorn backend.wsgi:application
       --bind 0.0.0.0:8000
@@ -27,9 +28,20 @@ services:
 
   celery:
     build: .
+    restart: unless-stopped
     command: celery -A backend worker -l info --concurrency=1
     volumes:
     - /var/www/nearestate-media:/app/media
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+
+  beat:
+    build: .
+    restart: unless-stopped
+    command: celery -A backend beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file:
       - .env
     depends_on:
