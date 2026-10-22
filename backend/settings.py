@@ -164,6 +164,18 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_THROTTLE_RATES": {
+        "otp_send": "10/hour",
+        "otp_verify": "30/minute",
+    },
+}
+
+# Shared cache so rate limits apply across all gunicorn workers.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://redis:6379/1",
+    }
 }
 
 SIMPLE_JWT = {
@@ -171,13 +183,16 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
-EMAIL_BACKEND = "accounts.email_backend.UnverifiedSSLEmailBackend"
-# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"  # verifies the SMTP certificate
 
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
 EMAIL_TIMEOUT = 30  # without this, a hung SMTP connection blocks the celery worker forever
+
+# Play Store reviewer login. Leave both blank in .env except while a review is pending.
+REVIEW_LOGIN_EMAIL = os.getenv("REVIEW_LOGIN_EMAIL", "")
+REVIEW_LOGIN_OTP = os.getenv("REVIEW_LOGIN_OTP", "")
 
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")

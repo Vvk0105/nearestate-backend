@@ -780,8 +780,9 @@ class ExhibitorStripeWebhookView(APIView):
         except stripe.error.SignatureVerificationError:
             logger.warning("Stripe webhook signature verification failed")
             return Response({"error": "Invalid signature"}, status=400)
-        except Exception as e:
-            return Response({"error": str(e)}, status=400)
+        except Exception:
+            logger.exception("Stripe webhook payload could not be parsed")
+            return Response({"error": "Invalid payload"}, status=400)
 
         event_type = event['type']
         data       = event['data']['object']

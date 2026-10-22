@@ -65,11 +65,7 @@ def _build_event_invitation_messages(subject, exhibition_data, recipients):
     return messages
 
 
-@shared_task(
-    bind=True,
-    autoretry_for=(Exception,),
-    retry_kwargs={"max_retries": 3, "countdown": 10}
-)
+@shared_task(bind=True)
 def send_event_email(self, subject, exhibition_data, recipients):
     """
     Send HTML event-invitation emails to all recipients using a single
@@ -86,17 +82,26 @@ def send_event_email(self, subject, exhibition_data, recipients):
     BATCH_SIZE = 50
     sent_total = 0
 
+    # No automatic retry: a retry would re-send to everyone already emailed.
+    # Failed batches are logged so they can be re-sent deliberately.
+    failed_recipients = []
     connection = get_connection(backend=settings.EMAIL_BACKEND)
     try:
         connection.open()
         for i in range(0, len(messages), BATCH_SIZE):
             batch = messages[i:i + BATCH_SIZE]
-            sent_total += connection.send_messages(batch)
+            try:
+                sent_total += connection.send_messages(batch)
+            except Exception:
+                logger.exception("send_event_email: batch starting at %d failed", i)
+                failed_recipients.extend(to for m in batch for to in m.to)
     finally:
         connection.close()
 
+    if failed_recipients:
+        logger.error("send_event_email: NOT sent to: %s", ", ".join(failed_recipients))
     logger.info("send_event_email: sent %d/%d invitation(s).", sent_total, len(messages))
-    return f"Sent {sent_total} of {len(messages)} emails."
+    return f"Sent {sent_total} of {len(messages)} emails; {len(failed_recipients)} failed."
 
 
 # ---------------------------------------------------------------------------

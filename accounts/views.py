@@ -8,6 +8,10 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.throttling import ScopedRateThrottle
+
+import hmac
+import logging
 
 from .models import EmailOTP, User
 from .utils import generate_otp
@@ -18,6 +22,10 @@ from google.auth.transport import requests as google_requests
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import authenticate
+
+logger = logging.getLogger(__name__)
+
+OTP_MAX_ATTEMPTS = 5
 
 
 class AdminLoginView(APIView):
@@ -74,6 +82,8 @@ class AdminLoginView(APIView):
 
 class SendEmailOTPView(APIView):
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "otp_send"
 
     def post(self, request):
         email = request.data.get("email")
@@ -92,7 +102,8 @@ class SendEmailOTPView(APIView):
                 {"error": "Please enter a valid email address"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if email == "playstore@nearestate.com":
+        # Reviewer test account (Play Store). Disabled unless REVIEW_LOGIN_EMAIL is set in .env.
+        if settings.REVIEW_LOGIN_EMAIL and email == settings.REVIEW_LOGIN_EMAIL:
             return Response({"message": "OTP sent successfully"})
 
         otp = generate_otp()
@@ -102,6 +113,7 @@ class SendEmailOTPView(APIView):
             defaults={
                 "otp": otp,
                 "is_verified": False,
+                "attempts": 0,
                 "created_at": timezone.now()
             }
         )
@@ -160,7 +172,7 @@ class LogoutView(APIView):
                 token.blacklist()
             except Exception as e:
                 # Still return success — token will expire naturally via ACCESS_TOKEN_LIFETIME
-                print(f"Token blacklist error (non-fatal): {e}")
+                logger.warning("Token blacklist error (non-fatal): %s", e)
             
             return Response(
                 {"message": "Successfully logged out"},
@@ -175,10 +187,12 @@ class LogoutView(APIView):
 
 class VerifyEmailOTPView(APIView):
     permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "otp_verify"
 
     def post(self, request):
         email = request.data.get("email")
-        otp = request.data.get("otp")
+        otp = str(request.data.get("otp", ""))
 
         if not email or not otp:
             return Response(
@@ -193,24 +207,45 @@ class VerifyEmailOTPView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if email == "playstore@nearestate.com" and otp == "123456":
-            # Bypass OTP check for Play Store review
-            pass
-        else:
-            try:
-                otp_record = EmailOTP.objects.get(email=email, otp=otp)
-                if otp_record.is_expired():
-                    return Response(
-                        {"error": "OTP expired"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                otp_record.is_verified = True
-                otp_record.save()
-            except EmailOTP.DoesNotExist:
+        is_review_login = (
+            bool(settings.REVIEW_LOGIN_EMAIL and settings.REVIEW_LOGIN_OTP)
+            and email == settings.REVIEW_LOGIN_EMAIL
+            and hmac.compare_digest(otp, settings.REVIEW_LOGIN_OTP)
+        )
+
+        if not is_review_login:
+            otp_record = EmailOTP.objects.filter(email=email).order_by("-created_at").first()
+
+            if otp_record is None:
                 return Response(
                     {"error": "Invalid OTP"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+
+            if otp_record.is_expired():
+                otp_record.delete()
+                return Response(
+                    {"error": "OTP expired"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if otp_record.attempts >= OTP_MAX_ATTEMPTS:
+                otp_record.delete()
+                return Response(
+                    {"error": "Too many wrong attempts. Please request a new OTP."},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+
+            if not hmac.compare_digest(otp, otp_record.otp):
+                otp_record.attempts += 1
+                otp_record.save(update_fields=["attempts"])
+                return Response(
+                    {"error": "Invalid OTP"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Correct code: make it single-use so it can't be replayed within its 5-minute window.
+            otp_record.delete()
 
 
         user, created = User.objects.get_or_create(
