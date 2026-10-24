@@ -31,6 +31,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import logging
 import stripe
+from django.db import transaction
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncMonth
 
 stripe.api_key = getattr(settings, 'STRIPE_SECRET_KEY', '')
 
@@ -585,21 +588,12 @@ class ExhibitorApplyView(APIView):
                 status=400
             )
 
-        app = ExhibitorApplication.objects.create(
-            user=user,
-            exhibition=exhibition,
-            payment_screenshot=request.FILES.get("payment_screenshot"),
-            transaction_id=request.data.get("transaction_id"),
+        # Screenshot/manual payment was removed in favour of Stripe; creating
+        # an application here would crash (those columns no longer exist).
+        return Response(
+            {"error": "Manual applications are no longer supported. Please book via the checkout page."},
+            status=410,
         )
-
-        compress_model_image.delay(
-            "exhibitions",
-            "ExhibitorApplication",
-            app.id,
-            "payment_screenshot",
-        )
-
-        return Response({"message": "Application submitted"})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -762,6 +756,13 @@ class ExhibitorCreatePaymentIntentView(APIView):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @method_decorator(csrf_exempt, name='dispatch')
+def _paid_amount(app, stripe_minor_units):
+    """Whole-currency amount for a paid booking: prefer what Stripe reports, else the tier fee."""
+    if stripe_minor_units:
+        return int(stripe_minor_units) // 100
+    return app.selected_tier.fee if app.selected_tier else 0
+
+
 class ExhibitorStripeWebhookView(APIView):
     """
     POST /exhibitions/stripe/webhook/
@@ -815,9 +816,11 @@ class ExhibitorStripeWebhookView(APIView):
             return  # Idempotent: already processed
 
         app.status = 'APPROVED'
+        app.paid_at = timezone.now()
+        app.amount_paid = _paid_amount(app, getattr(session, 'amount_total', None))
         app.exhibition.available_booths = max(0, app.exhibition.available_booths - 1)
         app.exhibition.save(update_fields=['available_booths'])
-        app.save(update_fields=['status'])
+        app.save(update_fields=['status', 'paid_at', 'amount_paid'])
 
         send_exhibitor_registration_email.delay(app.id)
         logger.info("checkout.session.completed: approved application %s", app.id)
@@ -847,9 +850,11 @@ class ExhibitorStripeWebhookView(APIView):
             return
 
         app.status = 'APPROVED'
+        app.paid_at = timezone.now()
+        app.amount_paid = _paid_amount(app, getattr(intent, 'amount_received', None))
         app.exhibition.available_booths = max(0, app.exhibition.available_booths - 1)
         app.exhibition.save(update_fields=['available_booths'])
-        app.save(update_fields=['status'])
+        app.save(update_fields=['status', 'paid_at', 'amount_paid'])
 
         send_exhibitor_registration_email.delay(app.id)
         logger.info("payment_intent.succeeded: approved application %s", app.id)
@@ -1068,29 +1073,33 @@ class VisitorRegisterView(APIView):
                 status=403
             )
 
-        exhibition = Exhibition.objects.get(id=exhibition_id)
-
-        if exhibition.available_visitors <= 0:
-            return Response(
-                {"error": "Visitor capacity full"},
-                status=400
+        with transaction.atomic():
+            # Lock the row so two simultaneous registrations can't both take the last slot
+            exhibition = get_object_or_404(
+                Exhibition.objects.select_for_update(), id=exhibition_id
             )
 
-        if VisitorRegistration.objects.filter(
-            user=user, exhibition=exhibition
-        ).exists():
-            return Response(
-                {"error": "Already registered"},
-                status=400
+            if exhibition.available_visitors <= 0:
+                return Response(
+                    {"error": "Visitor capacity full"},
+                    status=400
+                )
+
+            if VisitorRegistration.objects.filter(
+                user=user, exhibition=exhibition
+            ).exists():
+                return Response(
+                    {"error": "Already registered", "message": "Already registered"},
+                    status=400
+                )
+
+            registration = VisitorRegistration.objects.create(
+                user=user,
+                exhibition=exhibition
             )
 
-        registration = VisitorRegistration.objects.create(
-            user=user,
-            exhibition=exhibition
-        )
-
-        exhibition.available_visitors -= 1
-        exhibition.save()
+            exhibition.available_visitors -= 1
+            exhibition.save()
 
         # Send QR confirmation email to the visitor (async via Celery)
         send_visitor_qr_email.delay(
@@ -1734,7 +1743,6 @@ class AdminAddExhibitorView(APIView):
             exhibition=exhibition,
             status="APPROVED",
             booth_number=booth_number,
-            payment_screenshot=None,
         )
 
         # Attach badge if provided
@@ -1998,3 +2006,125 @@ class AdminDeleteVisitorInEventView(APIView):
         reg.delete()
 
         return Response({'message': 'Visitor removed from event successfully'}, status=status.HTTP_200_OK)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Admin: Revenue & Transactions (Stripe bookings)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _stripe_applications():
+    """Applications that went through Stripe checkout (web or mobile)."""
+    return ExhibitorApplication.objects.filter(
+        Q(stripe_session_id__isnull=False) | Q(stripe_payment_intent__isnull=False)
+    )
+
+
+class AdminTransactionsView(APIView):
+    """Every Stripe booking attempt, newest first. APPROVED = paid."""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    PAYMENT_STATUS = {"APPROVED": "PAID", "PENDING": "PENDING", "REJECTED": "FAILED"}
+
+    def get(self, request):
+        apps = (
+            _stripe_applications()
+            .select_related("user", "exhibition", "selected_tier", "user__exhibitorprofile")
+            .order_by("-applied_at")
+        )
+
+        exhibition_id = request.query_params.get("exhibition")
+        if exhibition_id and exhibition_id.isdigit():
+            apps = apps.filter(exhibition_id=exhibition_id)
+
+        data = []
+        for app in apps:
+            profile = getattr(app.user, "exhibitorprofile", None)
+            paid = app.status == "APPROVED"
+            data.append({
+                "id": app.id,
+                "booking_ref": app.booking_ref,
+                "date": app.paid_at or app.applied_at,
+                "exhibitor": profile.company_name if profile else app.user.username,
+                "email": app.user.email,
+                "exhibition_id": app.exhibition_id,
+                "exhibition": app.exhibition.name,
+                "tier": app.selected_tier.name if app.selected_tier else None,
+                "amount": app.amount_paid if paid else (app.selected_tier.fee if app.selected_tier else 0),
+                "currency_code": app.exhibition.currency_code,
+                "currency_symbol": app.exhibition.currency_symbol,
+                "payment_status": self.PAYMENT_STATUS.get(app.status, app.status),
+                "channel": "Mobile" if app.stripe_payment_intent else "Web",
+                "stripe_id": app.stripe_session_id or app.stripe_payment_intent,
+            })
+
+        return Response(data)
+
+
+class AdminRevenueView(APIView):
+    """Revenue = sum of amount_paid on paid (APPROVED) Stripe bookings, split per currency."""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request):
+        paid = _stripe_applications().filter(status="APPROVED")
+        pending = _stripe_applications().filter(status="PENDING")
+
+        totals = {}
+
+        def bucket(code, symbol):
+            return totals.setdefault(code, {
+                "currency_code": code,
+                "currency_symbol": symbol,
+                "total_revenue": 0,
+                "pending_amount": 0,
+                "paid_count": 0,
+                "per_exhibition": {},
+                "monthly": {},
+            })
+
+        for row in paid.values(
+            "exhibition_id", "exhibition__name",
+            "exhibition__currency_code", "exhibition__currency_symbol",
+        ).annotate(revenue=Sum("amount_paid"), n=Count("id")):
+            b = bucket(row["exhibition__currency_code"], row["exhibition__currency_symbol"])
+            b["total_revenue"] += row["revenue"] or 0
+            b["paid_count"] += row["n"]
+            b["per_exhibition"][row["exhibition_id"]] = {
+                "exhibition_id": row["exhibition_id"],
+                "exhibition": row["exhibition__name"],
+                "revenue": row["revenue"] or 0,
+                "bookings": row["n"],
+            }
+
+        for app in pending.select_related("exhibition", "selected_tier"):
+            b = bucket(app.exhibition.currency_code, app.exhibition.currency_symbol)
+            b["pending_amount"] += app.selected_tier.fee if app.selected_tier else 0
+
+        monthly = (
+            paid.annotate(month=TruncMonth("paid_at"))
+            .values("month", "exhibition__currency_code", "exhibition__currency_symbol")
+            .annotate(revenue=Sum("amount_paid"))
+            .order_by("month")
+        )
+        for row in monthly:
+            if not row["month"]:
+                continue
+            b = bucket(row["exhibition__currency_code"], row["exhibition__currency_symbol"])
+            b["monthly"][row["month"].strftime("%Y-%m")] = row["revenue"] or 0
+
+        result = []
+        for b in totals.values():
+            b["per_exhibition"] = sorted(
+                b["per_exhibition"].values(), key=lambda r: -r["revenue"]
+            )
+            b["monthly"] = [
+                {"month": m, "revenue": r} for m, r in sorted(b["monthly"].items())
+            ]
+            result.append(b)
+
+        return Response({
+            "currencies": result,
+            "total_bookings": paid.count(),
+            "pending_bookings": pending.count(),
+        })

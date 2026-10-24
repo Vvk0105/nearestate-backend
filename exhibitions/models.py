@@ -149,6 +149,12 @@ class ExhibitorApplication(models.Model):
         help_text="Stripe PaymentIntent ID (mobile SDK flow)"
     )
 
+    amount_paid = models.PositiveIntegerField(
+        default=0,
+        help_text="Amount actually paid via Stripe, in whole currency units (0 for free/admin-added)"
+    )
+    paid_at = models.DateTimeField(blank=True, null=True)
+
     booking_ref = models.CharField(
         max_length=30, unique=True, blank=True, null=True,
         help_text="Auto-generated booking reference e.g. NE-0076-0065"

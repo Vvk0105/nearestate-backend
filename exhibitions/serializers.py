@@ -250,7 +250,6 @@ class ExhibitorProfileMiniSerializer(serializers.ModelSerializer):
 class ExhibitorApplicationSerializer(serializers.ModelSerializer):
     user = UserMiniSerializer(read_only=True)
     exhibitor_profile = serializers.SerializerMethodField()
-    payment_screenshot = serializers.SerializerMethodField()
     badge = serializers.SerializerMethodField()
     selected_tier_name = serializers.SerializerMethodField()
     selected_tier_fee  = serializers.SerializerMethodField()
@@ -264,12 +263,6 @@ class ExhibitorApplicationSerializer(serializers.ModelSerializer):
         if not profile:
             return None
         return ExhibitorProfileMiniSerializer(profile).data
-
-    def get_payment_screenshot(self, obj):
-        request = self.context.get("request")
-        if obj.payment_screenshot:
-            return request.build_absolute_uri(obj.payment_screenshot.url)
-        return None
 
     def get_badge(self, obj):
         request = self.context.get("request")
